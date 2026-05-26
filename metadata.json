@@ -1,0 +1,6 @@
+{
+  "name": "DOPES MSU Student Accommodation",
+  "description": "Student accommodation listing application for Midlands State University (MSU) students near Main Campus, Batanai, and TelOne with direct WhatsApp securing and dynamic booking forms.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
