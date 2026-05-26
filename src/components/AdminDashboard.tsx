@@ -266,59 +266,81 @@ export default function AdminDashboard({
   return (
     <div className="fixed inset-0 z-50 max-h-screen overflow-hidden bg-neutral-50 flex flex-col">
       {/* Top Header */}
-      <header className="bg-blue-900 text-white px-6 py-4 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="bg-white/10 p-2 rounded-xl border border-white/10">
-            <ClipboardList size={22} className="text-blue-300" />
+      <header className="bg-blue-900 text-white px-4 sm:px-6 py-3.5 sm:py-4 flex flex-col lg:flex-row gap-4 items-center justify-between shadow-md shrink-0">
+        <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-white/10 p-2 rounded-xl border border-white/10 shrink-0">
+              <ClipboardList size={20} className="text-blue-300" />
+            </div>
+            <div>
+              <h1 className="text-sm sm:text-base font-extrabold tracking-tight">DOPES MSU Student Accomodation</h1>
+              <p className="text-[10px] text-blue-200 uppercase tracking-widest font-semibold">Management Console</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base font-extrabold tracking-tight">DOPES MSU Student Accomodation</h1>
-            <p className="text-[10px] text-blue-200 uppercase tracking-widest font-semibold">Management Console</p>
+          
+          {/* Close trigger for mobile */}
+          <div className="flex lg:hidden items-center gap-1.5">
+            <button
+              onClick={() => setIsAuthenticated(false)}
+              className="bg-white/10 hover:bg-white/15 text-neutral-200 hover:text-white rounded-lg p-2 text-xs font-semibold transition-all"
+              title="Log out"
+            >
+              <LogOut size={15} />
+            </button>
+            <button
+              onClick={onClose}
+              className="bg-white text-blue-900 font-bold rounded-lg px-3 py-1.5 text-xs transition-all hover:bg-blue-50"
+            >
+              Close
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex bg-blue-950/40 p-1 rounded-xl border border-blue-800/60 font-medium text-xs">
+        <div className="flex flex-wrap items-center justify-center gap-3 w-full lg:w-auto">
+          <div className="flex bg-blue-950/40 p-1 rounded-xl border border-blue-800/60 font-medium text-xs overflow-x-auto max-w-full">
             <button
               onClick={() => setActiveTab("listings")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === "listings" ? "bg-white text-blue-950 font-bold shadow-xs animate-fade-in" : "hover:text-blue-100 text-blue-200/80"
+              className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeTab === "listings" ? "bg-white text-blue-950 font-bold shadow-xs" : "hover:text-blue-100 text-blue-200/80"
               }`}
             >
               <Home size={13} /> Houses ({houses.length})
             </button>
             <button
               onClick={() => setActiveTab("bookings")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === "bookings" ? "bg-white text-blue-950 font-bold shadow-xs animate-fade-in" : "hover:text-blue-100 text-blue-200/80"
+              className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeTab === "bookings" ? "bg-white text-blue-950 font-bold shadow-xs" : "hover:text-blue-100 text-blue-200/80"
               }`}
             >
               <ClipboardList size={13} /> Bookings ({bookings.length})
             </button>
             <button
               onClick={() => setActiveTab("analytics")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === "analytics" ? "bg-white text-blue-950 font-bold shadow-xs animate-fade-in" : "hover:text-blue-100 text-blue-200/80"
+              className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeTab === "analytics" ? "bg-white text-blue-950 font-bold shadow-xs" : "hover:text-blue-100 text-blue-200/80"
               }`}
             >
-              <BarChart3 size={13} className={activeTab === "analytics" ? "text-blue-600" : ""} /> Financials & Analytics
+              <BarChart3 size={13} className={activeTab === "analytics" ? "text-blue-600" : ""} /> Analytics
             </button>
           </div>
 
-          <button
-            onClick={() => setIsAuthenticated(false)}
-            className="bg-transparent hover:bg-white/10 text-neutral-300 hover:text-white rounded-xl p-2 text-xs font-medium transition-all flex items-center gap-1"
-            title="Log out"
-          >
-            <LogOut size={16} />
-          </button>
-          
-          <button
-            onClick={onClose}
-            className="bg-white text-blue-900 font-bold rounded-xl px-4 py-2 text-xs transition-all hover:bg-blue-50"
-          >
-            Close Panel
-          </button>
+          <div className="hidden lg:flex items-center gap-3">
+            <button
+              onClick={() => setIsAuthenticated(false)}
+              className="bg-transparent hover:bg-white/10 text-neutral-300 hover:text-white rounded-xl p-2 text-xs font-medium transition-all flex items-center gap-1.5"
+              title="Log out"
+            >
+              <LogOut size={16} />
+              <span>Log Out</span>
+            </button>
+            
+            <button
+              onClick={onClose}
+              className="bg-white text-blue-900 font-bold rounded-xl px-4 py-2 text-xs transition-all hover:bg-blue-50"
+            >
+              Close Panel
+            </button>
+          </div>
         </div>
       </header>
 
