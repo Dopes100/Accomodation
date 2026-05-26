@@ -4,10 +4,20 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { House, Booking, INITIAL_HOUSES } from "./types";
+import { House, Booking } from "./types";
 import HouseCard from "./components/HouseCard";
 import BookingFormModal from "./components/BookingFormModal";
 import AdminDashboard from "./components/AdminDashboard";
+import { 
+  initializeDatabaseIfEmpty, 
+  subscribeToHouses, 
+  subscribeToBookings, 
+  saveHouseToFirestore, 
+  deleteHouseFromFirestore, 
+  submitBookingToFirestore, 
+  deleteBookingFromFirestore, 
+  toggleBookingCompletedInFirestore 
+} from "./firebaseUtils";
 // @ts-expect-error - Vite handles loading of png assets at compile-time
 import heroImage from "./assets/images/student_accommodation_hero_1779802930883.png";
 import { 
@@ -30,6 +40,7 @@ import {
 export default function App() {
   const [houses, setHouses] = useState<House[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // Filtering and Sorting States
   const [searchQuery, setSearchQuery] = useState("");
@@ -43,94 +54,66 @@ export default function App() {
   // Booking modal
   const [selectedHouseForBooking, setSelectedHouseForBooking] = useState<House | null>(null);
 
-  // Load state from local storage or set initial values on first mount
+  // Initialize and subscribe in useEffect
   useEffect(() => {
-    const savedHouses = localStorage.getItem("dopes_msu_houses");
-    const savedBookings = localStorage.getItem("dopes_msu_bookings");
+    let unsubscribeHouses: (() => void) | undefined;
+    let unsubscribeBookings: (() => void) | undefined;
 
-    if (savedHouses) {
-      try {
-        const parsed = JSON.parse(savedHouses) as House[];
-        const merged = [...parsed];
-        INITIAL_HOUSES.forEach((initHouse) => {
-          if (!merged.some((h) => h.id === initHouse.id)) {
-            merged.push(initHouse);
-          }
-        });
-        setHouses(merged);
-        localStorage.setItem("dopes_msu_houses", JSON.stringify(merged));
-      } catch (err) {
-        setHouses(INITIAL_HOUSES);
-      }
-    } else {
-      setHouses(INITIAL_HOUSES);
-      localStorage.setItem("dopes_msu_houses", JSON.stringify(INITIAL_HOUSES));
+    async function init() {
+      // 1. Initialize DB with fallback data if empty
+      await initializeDatabaseIfEmpty();
+
+      // 2. Listen in real-time to houses
+      unsubscribeHouses = subscribeToHouses((updatedHouses) => {
+        setHouses(updatedHouses);
+        setLoading(false);
+      });
+
+      // 3. Listen in real-time to bookings
+      unsubscribeBookings = subscribeToBookings((updatedBookings) => {
+        setBookings(updatedBookings);
+      });
     }
 
-    if (savedBookings) {
-      try {
-        setBookings(JSON.parse(savedBookings));
-      } catch (err) {
-        setBookings([]);
-      }
-    }
+    init();
+
+    return () => {
+      if (unsubscribeHouses) unsubscribeHouses();
+      if (unsubscribeBookings) unsubscribeBookings();
+    };
   }, []);
 
-  // Sync state functions
-  const saveHousesState = (updatedHouses: House[]) => {
-    setHouses(updatedHouses);
-    localStorage.setItem("dopes_msu_houses", JSON.stringify(updatedHouses));
-  };
-
-  const saveBookingsState = (updatedBookings: Booking[]) => {
-    setBookings(updatedBookings);
-    localStorage.setItem("dopes_msu_bookings", JSON.stringify(updatedBookings));
-  };
-
   // House actions from Admin
-  const handleAddHouse = (newHouse: House) => {
-    const updated = [newHouse, ...houses];
-    saveHousesState(updated);
+  const handleAddHouse = async (newHouse: House) => {
+    await saveHouseToFirestore(newHouse);
   };
 
-  const handleEditHouse = (editedHouse: House) => {
-    const updated = houses.map((h) => (h.id === editedHouse.id ? editedHouse : h));
-    saveHousesState(updated);
+  const handleEditHouse = async (editedHouse: House) => {
+    await saveHouseToFirestore(editedHouse);
   };
 
-  const handleDeleteHouse = (id: string) => {
-    const updated = houses.filter((h) => h.id !== id);
-    saveHousesState(updated);
+  const handleDeleteHouse = async (id: string) => {
+    await deleteHouseFromFirestore(id);
   };
 
   // Booking actions from Student Page / Admin
-  const handleBookingSubmit = (newBooking: Booking) => {
-    const updated = [newBooking, ...bookings];
-    saveBookingsState(updated);
-
-    // Update availability subtract slot count
-    const updatedHouses = houses.map((house) => {
-      if (house.id === newBooking.houseId) {
-        const remaining = Math.max(0, house.availableSlots - newBooking.headsCount);
-        return {
-          ...house,
-          availableSlots: remaining,
-          isAvailable: remaining > 0,
-        };
-      }
-      return house;
-    });
-    saveHousesState(updatedHouses);
+  const handleBookingSubmit = async (newBooking: Booking) => {
+    // Find matching house to atomically subtract spots
+    const matchedHouse = houses.find((h) => h.id === newBooking.houseId);
+    if (matchedHouse) {
+      await submitBookingToFirestore(newBooking, matchedHouse);
+    }
   };
 
-  const handleDeleteBooking = (id: string) => {
-    const updated = bookings.filter((b) => b.id !== id);
-    saveBookingsState(updated);
+  const handleDeleteBooking = async (id: string) => {
+    await deleteBookingFromFirestore(id);
   };
 
-  const handleToggleBookingCompleted = (id: string) => {
-    const updated = bookings.map((b) => b.id === id ? { ...b, completed: !b.completed } : b);
-    saveBookingsState(updated);
+  const handleToggleBookingCompleted = async (id: string) => {
+    const bookingToToggle = bookings.find((b) => b.id === id);
+    if (bookingToToggle) {
+      await toggleBookingCompletedInFirestore(bookingToToggle);
+    }
   };
 
   // Get locations list for dropdown
@@ -367,7 +350,23 @@ export default function App() {
             </div>
           </div>
 
-          {sortedHouses.length === 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="bg-white rounded-3xl border border-neutral-100 p-5 space-y-4 animate-pulse">
+                  <div className="bg-neutral-100 h-48 rounded-2xl w-full" />
+                  <div className="space-y-2">
+                    <div className="bg-neutral-100 h-5 rounded w-2/3" />
+                    <div className="bg-neutral-100 h-4 rounded w-1/2" />
+                  </div>
+                  <div className="pt-4 flex justify-between">
+                    <div className="bg-neutral-100 h-8 rounded w-1/4" />
+                    <div className="bg-neutral-100 h-8 rounded w-1/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : sortedHouses.length === 0 ? (
             <div className="bg-white border border-neutral-100 rounded-3xl p-16 text-center space-y-4 max-w-xl mx-auto shadow-sm">
               <div className="w-16 h-16 bg-neutral-100 text-neutral-400 rounded-full flex items-center justify-center mx-auto">
                 <Search size={24} />

@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "House": {
+      "title": "House",
+      "description": "Student accommodation house listing",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the house"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the listing"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the house"
+        },
+        "price": {
+          "type": "number",
+          "description": "Price per month in USD"
+        },
+        "location": {
+          "type": "string",
+          "description": "Location area of the property"
+        },
+        "roomType": {
+          "type": "string",
+          "enum": ["Single Room", "Double Shared", "Cottage Room", "Boarding Hostel"],
+          "description": "Type of student room"
+        },
+        "genderLimit": {
+          "type": "string",
+          "enum": ["Mixed", "Female Only", "Male Only"],
+          "description": "Gender preferences"
+        },
+        "distances": {
+          "type": "object",
+          "description": "Distance to campuses"
+        },
+        "features": {
+          "type": "array",
+          "description": "List of amenities provided"
+        },
+        "images": {
+          "type": "array",
+          "description": "Image gallery urls"
+        },
+        "availableSlots": {
+          "type": "number",
+          "description": "Available vacancy slots"
+        },
+        "maxSlots": {
+          "type": "number",
+          "description": "Total bed capacity"
+        },
+        "isAvailable": {
+          "type": "boolean",
+          "description": "Availability status"
+        }
+      },
+      "required": ["id", "title", "description", "price", "location", "roomType", "genderLimit", "availableSlots", "maxSlots", "isAvailable"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Accommodation booking request",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the booking"
+        },
+        "houseId": {
+          "type": "string",
+          "description": "References the booked House listing ID"
+        },
+        "houseTitle": {
+          "type": "string",
+          "description": "Cached title of the property"
+        },
+        "studentName": {
+          "type": "string",
+          "description": "Full name of the student making the booking"
+        },
+        "studentPhone": {
+          "type": "string",
+          "description": "Phone number of the student"
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["Male", "Female"],
+          "description": "Student's gender"
+        },
+        "headsCount": {
+          "type": "number",
+          "description": "Number of students in the booking group"
+        },
+        "targetMoveIn": {
+          "type": "string",
+          "description": "Desired move-in date"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Personal remarks/notes"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Time when the booking was submitted"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Agent fee payment setup completed status"
+        }
+      },
+      "required": ["id", "houseId", "houseTitle", "studentName", "studentPhone", "gender", "headsCount", "targetMoveIn", "notes", "timestamp"]
+    }
+  },
+  "firestore": {
+    "houses/{houseId}": {
+      "schema": "House",
+      "description": "Collection of student accommodation house listings"
+    },
+    "bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Collection of accommodation booking requests"
+    }
+  }
+}
