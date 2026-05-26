@@ -8,6 +8,8 @@ import { House, Booking, INITIAL_HOUSES } from "./types";
 import HouseCard from "./components/HouseCard";
 import BookingFormModal from "./components/BookingFormModal";
 import AdminDashboard from "./components/AdminDashboard";
+// @ts-expect-error - Vite handles loading of png assets at compile-time
+import heroImage from "./assets/images/student_accommodation_hero_1779802930883.png";
 import { 
   Home, 
   Search, 
@@ -221,7 +223,7 @@ export default function App() {
       <section className="relative overflow-hidden bg-slate-950 text-white pb-32 pt-20">
         <div className="absolute inset-0 z-0 opacity-60">
           <img
-            src="/src/assets/images/student_accommodation_hero_1779802930883.png"
+            src={heroImage}
             alt="Student Accommodation exterior"
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover"
