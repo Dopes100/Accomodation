@@ -188,7 +188,7 @@ export default function AdminDashboard({
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(226, 232, 240);
-      doc.text("Official Midlands State University Student Housing Provider", 15, 24);
+      doc.text("Secure Off-Campus Student Housing & Booking Platform", 15, 24);
       doc.text("Gweru, Zimbabwe | dopesaccommodationagency@gmail.com", 15, 29);
       
       // Document title
@@ -382,7 +382,10 @@ export default function AdminDashboard({
               Dear <strong>${booking.studentName}</strong>,
             </p>
             <p style="font-size: 14px; color: #334155; line-height: 1.6;">
-              We have audited your payment for <strong>${booking.houseTitle}</strong>. Your payment is now marked as <strong>VERIFIED COMPLETE & PAID</strong> on our Midlands State University student ledger!
+              We have audited your payment for <strong>${booking.houseTitle}</strong>. Your payment is now marked as <strong>VERIFIED COMPLETE & PAID</strong> on our secure student accommodation registry!
+            </p>
+            <p style="font-size: 13px; color: #64748b; line-height: 1.6; font-style: italic; border-left: 3px solid #cbd5e1; padding-left: 10px; margin: 15px 0;">
+              Please note that we are not affiliated with Midlands State University (MSU), but this platform helps you secure quality student accommodation close to campus safely and easily.
             </p>
             <p style="font-size: 14px; color: #334155; line-height: 1.6;">
               We have generated an official digital <strong>PDF Payment Receipt & Lease Permission</strong> and attached it directly to this email. You may present this certificate to your respective landlord during check-in.
@@ -508,7 +511,7 @@ export default function AdminDashboard({
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(226, 232, 240);
-      doc.text("Official Midlands State University Student Housing Provider", 15, 24);
+      doc.text("Secure Off-Campus Student Housing & Booking Platform", 15, 24);
       doc.text("Gweru, Zimbabwe | dopesaccommodationagency@gmail.com", 15, 29);
       
       // Document title

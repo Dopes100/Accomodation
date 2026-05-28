@@ -243,7 +243,7 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 30px; text-align: center; color: #ffffff;">
           <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">Dopes Accommodation</h1>
-          <p style="margin: 5px 0 0 0; font-size: 13px; color: #bfdbfe; font-weight: 500;">Official Midlands State University Student Housing Provider</p>
+          <p style="margin: 5px 0 0 0; font-size: 13px; color: #bfdbfe; font-weight: 500;">Secure Student Housing Near Campus Safely and Easily</p>
         </div>
 
         <div style="padding: 30px;">
@@ -282,7 +282,7 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
               <tbody>
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                   <td style="padding: 12px 16px; color: #334155;">
-                    <strong style="color: #0f172a; display: block;">MSU Securing Agent Fee</strong>
+                    <strong style="color: #0f172a; display: block;">Student Housing Securing Agent Fee</strong>
                     <span style="font-size: 11px; color: #64748b;">Securing commision for ${headsCount} registered student(s)</span>
                   </td>
                   <td style="padding: 12px 16px; text-align: right; color: #0f172a; font-weight: 600;">${agentFeeDetail}</td>
@@ -315,15 +315,16 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
           <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 16px; margin-bottom: 30px;">
             <h4 style="margin: 0 0 5px 0; font-size: 13px; font-weight: 700; color: #1e3a8a; text-transform: uppercase;">Verification Process & Moving-In Details</h4>
             <p style="margin: 0; font-size: 12px; color: #1e3a8a; line-height: 1.5;">
-              Our chief agent <strong>Panashe Dondo</strong> is performing standard auditing of your transaction proof. Once approved and ticked complete on the MSU admin ledger, you will instantly receive your official digital <strong>PDF Payment Receipt</strong>. Show that PDF receipt to your landlord to check in on <strong>${targetMoveIn}</strong>.
+              Our chief agent <strong>Panashe Dondo</strong> is performing standard auditing of your transaction proof. Once approved and ticked complete on our secure admin ledger, you will instantly receive your official digital <strong>PDF Payment Receipt</strong>. Show that PDF receipt to your landlord to check in on <strong>${targetMoveIn}</strong>.
             </p>
           </div>
 
           <!-- Signature details -->
-          <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; font-size: 12px; color: #64748b; line-height: 1.5; text-align: center;">
+            <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; font-size: 12px; color: #64748b; line-height: 1.5; text-align: center;">
             <p style="margin: 0; font-weight: 700; color: #334155;">Dopes Accommodation Agency Gweru Bureau</p>
             <p style="margin: 3px 0 0 0;">dopesaccommodationagency@gmail.com • +263 78 073 6072</p>
             <p style="margin: 5px 0 0 0; font-size: 11px; color: #94a3b8;">This is a system generated digital securing invoice holding reservation spaces.</p>
+            <p style="margin: 5px 0 0 0; font-size: 10px; color: #94a3b8; font-style: italic;">Not affiliated with Midlands State University (MSU) but helping you secure quality student accommodation close to campus safely and easily.</p>
           </div>
         </div>
       </div>
@@ -970,7 +971,7 @@ Please confirm my mail delivery receipt confirmation from dopesaccommodationagen
                     <div>
                       <h4 className="font-bold text-sm text-neutral-800">Processing Secure Booking</h4>
                       <p className="text-xs text-neutral-500 mt-1 max-w-xs mx-auto font-medium leading-relaxed">
-                        We are securing your accommodation space, registering your details on our Midlands State University student portal, and preparing your confirmation email. Please stay on this screen...
+                        We are securing your accommodation space, registering your details on our secure student housing database, and preparing your confirmation email. Please stay on this screen...
                       </p>
                     </div>
                   </motion.div>
