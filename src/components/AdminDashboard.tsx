@@ -27,7 +27,11 @@ import {
   PlusCircle,
   Lightbulb,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Loader2,
+  Mail,
+  MessageSquare,
+  Settings
 } from "lucide-react";
 
 interface AdminDashboardProps {
@@ -79,7 +83,14 @@ export default function AdminDashboard({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState("");
 
-  const [activeTab, setActiveTab] = useState<"listings" | "bookings" | "analytics">("listings");
+  const [activeTab, setActiveTab] = useState<"listings" | "bookings" | "analytics" | "deposits">("listings");
+  const [sendingPdfId, setSendingPdfId] = useState<string | null>(null);
+  const [depositsSearchQuery, setDepositsSearchQuery] = useState("");
+  
+  // Custom dynamic SMTP settings for GMAIL
+  const [smtpUser, setSmtpUser] = useState(() => localStorage.getItem("dopes_gmail_user") || "dopesaccommodationagency@gmail.com");
+  const [smtpPass, setSmtpPass] = useState(() => localStorage.getItem("dopes_gmail_app_password") || "");
+  const [showSmtpSettings, setShowSmtpSettings] = useState(false);
   
   // Manual offline booking state
   const [manualStudentName, setManualStudentName] = useState("");
@@ -126,6 +137,538 @@ export default function AdminDashboard({
       setAuthError("");
     } else {
       setAuthError("Incorrect password. Access denied!");
+    }
+  };
+
+  const generateAndSendPDFReceipt = async (booking: Booking) => {
+    try {
+      setSendingPdfId(booking.id);
+      
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+      
+      // Draw background decorations
+      doc.setFillColor(30, 58, 138); // Deep blue (#1e3a8a)
+      doc.rect(0, 0, 210, 35, "F");
+      
+      // Brand Header text
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(255, 255, 255);
+      doc.text("DOPES ACCOMMODATION AGENCY", 15, 18);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(226, 232, 240);
+      doc.text("Official Midlands State University Student Housing Provider", 15, 24);
+      doc.text("Gweru, Zimbabwe | dopesaccommodationagency@gmail.com", 15, 29);
+      
+      // Document title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(30, 58, 138);
+      doc.text("OFFICIAL RECEIPT & LEASE PERMISSION", 15, 48);
+      
+      // Status Stamp Box
+      doc.setDrawColor(16, 185, 129); // emerald Green stamp border
+      doc.setFillColor(240, 253, 250); // emerald bg
+      doc.rect(142, 40, 53, 22, "FD");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(16, 185, 129);
+      doc.text("VERIFIED PAID", 153, 49);
+      doc.setFontSize(8);
+      doc.setTextColor(5, 150, 105);
+      doc.text("Panashe Dondo Audited", 147, 54);
+      doc.text("Online Portal Record ✅", 147, 58);
+      
+      // Metadata Details block (Left column)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(30, 41, 59);
+      doc.text("PAYER / STUDENT DETAILS", 15, 68);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Name:", 15, 75);
+      doc.setFont("helvetica", "normal");
+      doc.text(booking.studentName, 42, 75);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Phone:", 15, 81);
+      doc.setFont("helvetica", "normal");
+      doc.text(booking.studentPhone, 42, 81);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Email:", 15, 87);
+      doc.setFont("helvetica", "normal");
+      doc.text(booking.studentEmail || "Not Provided", 42, 87);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Gender Group:", 15, 93);
+      doc.setFont("helvetica", "normal");
+      doc.text(booking.gender, 42, 93);
+      
+      // Receipt Details block (Right column)
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 41, 59);
+      doc.text("TRANSACTION METADATA", 115, 68);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Receipt ID:", 115, 75);
+      doc.setFont("helvetica", "normal");
+      doc.text(`REC-${booking.id.toUpperCase()}`, 142, 75);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Date Paid:", 115, 81);
+      doc.setFont("helvetica", "normal");
+      doc.text(new Date().toLocaleDateString(), 142, 81);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Payment Mode:", 115, 87);
+      doc.setFont("helvetica", "normal");
+      doc.text(booking.paymentMethod || "Direct Settlement", 142, 87);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Reservation Status:", 115, 93);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(16, 185, 129);
+      doc.text("Secure Hold Active", 150, 93);
+      doc.setTextColor(30, 41, 59);
+      
+      doc.line(15, 100, 195, 100);
+      
+      // Summary Summary Table Header
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(30, 58, 138);
+      doc.text("ACCOMMODATION & FEES LEDGER", 15, 109);
+      
+      // Table content headers
+      doc.setFillColor(241, 245, 249);
+      doc.rect(15, 114, 180, 8, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.text("RESERVED ACCOMMODATION / SERVICE DESCRIPTION", 18, 119);
+      doc.text("ALLOCATED TOTAL", 160, 119);
+      
+      // Item 1: Commission Secured
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`Official MSU Rental Securing Fee (${booking.headsCount} Student slot)`, 18, 129);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Standard securing & validation commission registered with MSU portal", 18, 133);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`$${booking.headsCount * 20}.00 USD`, 160, 129);
+      
+      // Item 2: Upfront Deposit Choice
+      const depositAmt = booking.customDepositAmount || 0;
+      doc.text("Landlord Accommodation Deposit Placement", 18, 143);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Upfront deposit allotment choice: ${booking.depositChoice || "None"}`, 18, 147);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`$${depositAmt}.00 USD`, 160, 143);
+      
+      // Carrier fees
+      const carrierFee = booking.paymentMethod === "EcoCash" ? 1 : 0;
+      if (carrierFee > 0) {
+        doc.text("EcoCash Network Fee", 18, 157);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text("TelOne Road mobile operator surcharge transaction fee", 18, 161);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(15, 23, 42);
+        doc.text(`$1.00 USD`, 160, 157);
+      }
+      
+      doc.line(15, 170, 195, 170);
+      
+      // Grand Total
+      const grandTotal = (booking.headsCount * 20) + depositAmt + carrierFee;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(30, 58, 138);
+      doc.text("TOTAL PAID IN FULL:", 115, 179);
+      doc.text(`$${grandTotal}.00 USD`, 160, 179);
+      
+      // Rules and Terms Info Box at bottom of PDF
+      doc.setFillColor(239, 246, 255);
+      doc.rect(15, 188, 180, 24, "F");
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(30, 58, 138);
+      doc.text("IMPORTANT LANDLORD DIRECTIONS:", 18, 193);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(30, 58, 138);
+      doc.text("1. This verified receipt authorizes the tenant student to enter and occupy target premises listed above.", 18, 197);
+      doc.text(`2. Target move-in is expected on or after ${booking.targetMoveIn}. Landlord is required to retain this receipt.`, 18, 201);
+      doc.text("3. High speed borehole, Wi-Fi, and solar backup access details are provided directly to student upon arrival.", 18, 205);
+      
+      // Signatures
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Authorized Signature stamp", 15, 225);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139);
+      doc.text("Panashe Dondo, DOPES Managing Representative", 15, 229);
+      
+      // A small signature stamp or seal line
+      doc.line(15, 233, 90, 233);
+      doc.setTextColor(30, 58, 138);
+      doc.setFont("helvetica", "bold");
+      doc.text("DOPES SECURED \u2713", 15, 238);
+      
+      // Footer page index
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(148, 163, 184);
+      doc.text("Dopes Accommodation Agency \u2022 Zimbabwe Registrar of Agencies #D-7392", 15, 260);
+      doc.text("Page 1 of 1", 175, 260);
+      
+      const base64Pdf = doc.output("datauristring").split(",")[1];
+      
+      // Construct beautiful Email body detailing payment status
+      const receiptEmailHtml = `
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center; color: #ffffff;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 800; text-transform: uppercase;">Payment Confirmed</h1>
+            <p style="margin: 5px 0 0 0; font-size: 13px; color: #a7f3d0; font-weight: 500;">Your Official DOPES Secure PDF Receipt is Attached!</p>
+          </div>
+          
+          <div style="padding: 30px;">
+            <p style="font-size: 14px; color: #334155; line-height: 1.6; margin-top: 0;">
+              Dear <strong>${booking.studentName}</strong>,
+            </p>
+            <p style="font-size: 14px; color: #334155; line-height: 1.6;">
+              We have audited your payment for <strong>${booking.houseTitle}</strong>. Your payment is now marked as <strong>VERIFIED COMPLETE & PAID</strong> on our Midlands State University student ledger!
+            </p>
+            <p style="font-size: 14px; color: #334155; line-height: 1.6;">
+              We have generated an official digital <strong>PDF Payment Receipt & Lease Permission</strong> and attached it directly to this email. You may present this certificate to your respective landlord during check-in.
+            </p>
+            
+            <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; margin: 25px 0;">
+              <strong style="color: #166534; display: block; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; font-weight: 800; tracking-wide: 0.5px;">Move-In Clearance Issued</strong>
+              <p style="margin: 0; font-size: 12px; color: #166534; line-height: 1.5;">
+                Target Move-In Date: <strong>${booking.targetMoveIn}</strong><br />
+                Security deposit choice: <strong>${booking.depositChoice === "Full" ? "Settle in Full" : (booking.depositChoice === "None" ? "Pay Landlord on Move-in" : `Partial $${booking.customDepositAmount} Paid`)}</strong>
+              </p>
+            </div>
+            
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
+              If you have any further questions or require a transport match, please touch base with us on WhatsApp anytime. Welcome to your new home!
+            </p>
+            
+            <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; font-size: 12px; color: #64748b; text-align: center; margin-top: 30px;">
+              <p style="margin: 0; font-weight: 700; color: #334155;">Dopes Accommodation Agency</p>
+              <p style="margin: 3px 0 0 0;">dopesaccommodationagency@gmail.com • +263 78 073 6072</p>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Dispatch email payload through our real backend
+      const payload = {
+        to: booking.studentEmail,
+        subject: `[CONFIRMED] DOPES PAYMENT RECEIPT [REC-${booking.id.toUpperCase()}]`,
+        html: receiptEmailHtml,
+        text: `Dear ${booking.studentName}. Your payment for ${booking.houseTitle} is confirmed! Please check the attached official PDF receipt.`,
+        gmailUser: smtpUser,
+        gmailAppPassword: smtpPass,
+        attachments: [
+          {
+            filename: `DOPES_Receipt_${booking.studentName.replace(/\s+/g, "_")}.pdf`,
+            content: base64Pdf,
+            encoding: "base64"
+          }
+        ]
+      };
+      
+      const response = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (data.success) {
+        if (data.simulated) {
+          alert(`PDF Generated Successful! (Sandbox Mode)\n\nAn official DOPES PDF receipt has been successfully compiled for ${booking.studentName}.\n\nGmail credentials are not fully active, so the email delivery has been logged securely.\n\nType: ${data.details || 'Standard Sandbox'}`);
+        } else {
+          alert(`Success! Official digital receipt PDF generated and dispatched securely to ${booking.studentEmail}.`);
+        }
+      } else {
+        alert(`Email DISPATCH FAILED!\n\nReason: ${data.warning || "Rejected"}\nDetails: ${data.details || "Check user/password info"}\n\nSuggestion: ${data.suggestion || "Ensure you configure your Gmail account and generate a 16-character App Password at myaccount.google.com/apppasswords"}`);
+      }
+    } catch (err: any) {
+      console.error("PDF Receipt dispatch failure:", err);
+      alert("Error compiling PDF receipt: " + err.message);
+    } finally {
+      setSendingPdfId(null);
+    }
+  };
+
+  const generateAndWhatsAppDoc = async (booking: Booking, type: "invoice" | "receipt") => {
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+      
+      // Draw background decorations
+      doc.setFillColor(30, 58, 138); // Deep blue (#1e3a8a)
+      doc.rect(0, 0, 210, 35, "F");
+      
+      // Brand Header text
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(255, 255, 255);
+      doc.text("DOPES ACCOMMODATION AGENCY", 15, 18);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(226, 232, 240);
+      doc.text("Official Midlands State University Student Housing Provider", 15, 24);
+      doc.text("Gweru, Zimbabwe | dopesaccommodationagency@gmail.com", 15, 29);
+      
+      // Document title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(30, 58, 138);
+      doc.text(type === "receipt" ? "OFFICIAL RECEIPT & LEASE PERMISSION" : "OFFICIAL RESERVATION INVOICE", 15, 48);
+      
+      // Status Stamp Box
+      if (type === "receipt") {
+        doc.setDrawColor(16, 185, 129); // emerald Green stamp border
+        doc.setFillColor(240, 253, 250); // emerald bg
+        doc.rect(142, 40, 53, 22, "FD");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(16, 185, 129);
+        doc.text("VERIFIED PAID", 153, 49);
+        doc.setFontSize(8);
+        doc.setTextColor(5, 150, 105);
+        doc.text("Panashe Dondo Audited", 147, 54);
+        doc.text("Online Portal Record \u2705", 147, 58);
+      } else {
+        doc.setDrawColor(245, 158, 11); // Amber
+        doc.setFillColor(254, 243, 199); // Amber bg
+        doc.rect(142, 40, 53, 22, "FD");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(217, 119, 6);
+        doc.text("PENDING VERIFY", 148, 49);
+        doc.setFontSize(8);
+        doc.setTextColor(180, 83, 9);
+        doc.text("Payment Audit Required", 144, 54);
+        doc.text("Secure Hold Active \u23f1", 146, 58);
+      }
+      
+      // Metadata Details block (Left column)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(30, 41, 59);
+      doc.text("PAYER / STUDENT DETAILS", 15, 68);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Name:", 15, 75);
+      doc.setFont("helvetica", "normal");
+      doc.text(booking.studentName, 42, 75);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Phone:", 15, 81);
+      doc.setFont("helvetica", "normal");
+      doc.text(booking.studentPhone, 42, 81);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Email:", 15, 87);
+      doc.setFont("helvetica", "normal");
+      doc.text(booking.studentEmail || "Not Provided", 42, 87);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Gender Group:", 15, 93);
+      doc.setFont("helvetica", "normal");
+      doc.text(booking.gender, 42, 93);
+      
+      // Receipt Details block (Right column)
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 41, 59);
+      doc.text("TRANSACTION METADATA", 115, 68);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text(type === "receipt" ? "Receipt ID:" : "Invoice ID:", 115, 75);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${type === "receipt" ? "REC" : "INV"}-${booking.id.toUpperCase()}`, 142, 75);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Date Issued:", 115, 81);
+      doc.setFont("helvetica", "normal");
+      doc.text(new Date().toLocaleDateString(), 142, 81);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Payment Mode:", 115, 87);
+      doc.setFont("helvetica", "normal");
+      doc.text(booking.paymentMethod || "Direct Settlement", 142, 87);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Reservation Status:", 115, 93);
+      doc.setFont("helvetica", "normal");
+      if (type === "receipt") {
+        doc.setTextColor(16, 185, 129);
+        doc.text("Secure Hold Active", 150, 93);
+      } else {
+        doc.setTextColor(245, 158, 11);
+        doc.text("Temporary Lock Hold", 150, 93);
+      }
+      doc.setTextColor(30, 41, 59);
+      
+      doc.line(15, 100, 195, 100);
+      
+      // Summary Summary Table Header
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(30, 58, 138);
+      doc.text("ACCOMMODATION & FEES LEDGER", 15, 109);
+      
+      // Table content headers
+      doc.setFillColor(241, 245, 249);
+      doc.rect(15, 114, 180, 8, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.text("RESERVED ACCOMMODATION / SERVICE DESCRIPTION", 18, 119);
+      doc.text("ALLOCATED TOTAL", 160, 119);
+      
+      // Item 1: Commission Secured
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`Official MSU Rental Securing Fee (${booking.headsCount} Student slot)`, 18, 129);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Standard securing & validation commission registered with MSU portal", 18, 133);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`$${booking.headsCount * 20}.00 USD`, 160, 129);
+      
+      // Item 2: Upfront Deposit Choice
+      const depositAmt = booking.customDepositAmount || 0;
+      doc.text("Landlord Accommodation Deposit Placement", 18, 143);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Upfront deposit allotment choice: ${booking.depositChoice || "None"}`, 18, 147);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`$${depositAmt}.00 USD`, 160, 143);
+      
+      // Carrier fees
+      const carrierFee = booking.paymentMethod === "EcoCash" ? 1 : 0;
+      if (carrierFee > 0) {
+        doc.text("EcoCash Network Fee", 18, 157);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text("TelOne Road mobile operator surcharge transaction fee", 18, 161);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(15, 23, 42);
+        doc.text(`$1.00 USD`, 160, 157);
+      }
+      
+      doc.line(15, 170, 195, 170);
+      
+      // Grand Total
+      const grandTotal = (booking.headsCount * 20) + depositAmt + carrierFee;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(30, 58, 138);
+      doc.text(type === "receipt" ? "TOTAL PAID IN FULL:" : "TOTAL INVOICE AMOUNT:", 115, 179);
+      doc.text(`$${grandTotal}.00 USD`, 160, 179);
+      
+      // Rules and Terms Info Box at bottom of PDF
+      doc.setFillColor(239, 246, 255);
+      doc.rect(15, 188, 180, 24, "F");
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(30, 58, 138);
+      doc.text("IMPORTANT LANDLORD DIRECTIONS:", 18, 193);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(30, 58, 138);
+      doc.text("1. This verified document authorizes the tenant student to enter and occupy target premises listed above.", 18, 197);
+      doc.text(`2. Target move-in is expected on or after ${booking.targetMoveIn}. Landlord is required to retain this document.`, 18, 201);
+      doc.text("3. High speed borehole, Wi-Fi, and solar backup access details are provided directly to student upon arrival.", 18, 205);
+      
+      // Signatures
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Authorized Signature stamp", 15, 225);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139);
+      doc.text("Panashe Dondo, DOPES Managing Representative", 15, 229);
+      
+      // A small signature stamp or seal line
+      doc.line(15, 233, 90, 233);
+      doc.setTextColor(30, 58, 138);
+      doc.setFont("helvetica", "bold");
+      doc.text(type === "receipt" ? "DOPES SECURED \u2713" : "DOPES HOLD ACTIVE \u23f1", 15, 238);
+      
+      // Footer page index
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(148, 163, 184);
+      doc.text("Dopes Accommodation Agency \u2022 Zimbabwe Registrar of Agencies #D-7392", 15, 260);
+      doc.text("Page 1 of 1", 175, 260);
+      
+      // Save locally to browser
+      const filename = `DOPES_${type === "receipt" ? "Receipt" : "Invoice"}_${booking.studentName.replace(/\s+/g, "_")}.pdf`;
+      doc.save(filename);
+      
+      // Build clean WhatsApp redirect
+      let rawPhone = booking.studentPhone.trim().replace(/\s+/g, "").replace(/[^0-9+]/g, "");
+      let formattedPhone = rawPhone;
+      if (formattedPhone.startsWith("0")) {
+        formattedPhone = "263" + formattedPhone.slice(1);
+      } else if (formattedPhone.startsWith("+")) {
+        formattedPhone = formattedPhone.slice(1);
+      }
+      
+      const statusTitle = type === "receipt" ? "VERIFIED PAYMENT RECEIPT" : "RESERVATION INVOICE";
+      const messageText = `*DOPES ACCOMMODATION AGENCY* 🏠\n` +
+        `----------------------------------------\n` +
+        `Hello *${booking.studentName}*,\n\n` +
+        `We have compiled and downloaded your official *${statusTitle}* [Code: ${booking.id.toUpperCase()}] for your accommodation reservation at:\n` +
+        `👉 *${booking.houseTitle}*\n\n` +
+        `• *Details*:\n` +
+        `  - Securing Fee: $${booking.headsCount * 20} USD (${booking.headsCount} slot)\n` +
+        `  - Landlord Deposit: $${depositAmt} Choice\n` +
+        `  - Total Payment: *$${grandTotal} USD*\n` +
+        `  - Target Move-In: ${booking.targetMoveIn}\n\n` +
+        `*The formal DOPES PDF Document has been compiled and downloaded to this device.* Please attach the downloaded file \`${filename}\` in this chat!\n\n` +
+        `Welcome to your student housing! Let us know if you require any logistics coordinate.`;
+        
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(messageText)}`;
+      window.open(whatsappUrl, "_blank");
+      
+    } catch (err: any) {
+      console.error("WhatsApp doc compilation failure:", err);
+      alert("Error compiling WhatsApp PDF: " + err.message);
     }
   };
 
@@ -229,7 +772,6 @@ export default function AdminDashboard({
               <Lock size={22} />
             </div>
             <h3 className="font-sans font-extrabold text-xl text-neutral-900 tracking-tight">Admin Gateway</h3>
-            <p className="text-xs text-neutral-500">Provide the DOPES security password to access listing options and analytics.</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -283,6 +825,13 @@ export default function AdminDashboard({
           {/* Close trigger for mobile */}
           <div className="flex lg:hidden items-center gap-1.5">
             <button
+              onClick={() => setShowSmtpSettings(true)}
+              className="bg-white/10 hover:bg-white/15 text-slate-200 hover:text-white rounded-lg p-2 text-xs font-semibold transition-all"
+              title="Gmail SMTP Setup"
+            >
+              <Settings size={15} />
+            </button>
+            <button
               onClick={() => setIsAuthenticated(false)}
               className="bg-white/10 hover:bg-white/15 text-neutral-200 hover:text-white rounded-lg p-2 text-xs font-semibold transition-all"
               title="Log out"
@@ -324,12 +873,29 @@ export default function AdminDashboard({
             >
               <BarChart3 size={13} className={activeTab === "analytics" ? "text-blue-600" : ""} /> Analytics
             </button>
+            <button
+              onClick={() => setActiveTab("deposits")}
+              className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeTab === "deposits" ? "bg-white text-blue-950 font-bold shadow-xs" : "hover:text-blue-100 text-blue-200/80"
+              }`}
+            >
+              <Coins size={13} className={activeTab === "deposits" ? "text-amber-500" : ""} /> Deposits Ledger
+            </button>
           </div>
 
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3 font-semibold text-xs">
+            <button
+              onClick={() => setShowSmtpSettings(true)}
+              className="bg-white/10 hover:bg-white/15 text-slate-200 hover:text-white rounded-xl px-2.5 py-2 text-xs transition-all flex items-center gap-1.5 cursor-pointer border border-blue-800/60"
+              title="Configure Custom Gmail App Password"
+            >
+              <Settings size={15} />
+              <span>Gmail Manual Setup</span>
+            </button>
+            
             <button
               onClick={() => setIsAuthenticated(false)}
-              className="bg-transparent hover:bg-white/10 text-neutral-300 hover:text-white rounded-xl p-2 text-xs font-medium transition-all flex items-center gap-1.5"
+              className="bg-transparent hover:bg-white/10 text-neutral-300 hover:text-white rounded-xl p-2 text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer"
               title="Log out"
             >
               <LogOut size={16} />
@@ -338,7 +904,7 @@ export default function AdminDashboard({
             
             <button
               onClick={onClose}
-              className="bg-white text-blue-900 font-bold rounded-xl px-4 py-2 text-xs transition-all hover:bg-blue-50"
+              className="bg-white text-blue-900 font-bold rounded-xl px-4 py-2 text-xs transition-all hover:bg-blue-50 cursor-pointer"
             >
               Close Panel
             </button>
@@ -810,7 +1376,26 @@ export default function AdminDashboard({
                               <input
                                 type="checkbox"
                                 checked={isCompleted}
-                                onChange={() => onToggleBookingCompleted?.(booking.id)}
+                                onChange={async () => {
+                                  onToggleBookingCompleted?.(booking.id);
+                                  if (!isCompleted) {
+                                    setTimeout(async () => {
+                                      const choice = window.confirm(
+                                        `Payment marked as Completed/Paid for ${booking.studentName}!\n\nWould you like to compile and deliver the official DOPES Receipt PDF?\n\n- Click [OK] to dispatch via SMTP Email.\n- Click [Cancel] to download the PDF locally and open WhatsApp chat.`
+                                      );
+                                      if (choice) {
+                                        if (booking.studentEmail) {
+                                          await generateAndSendPDFReceipt(booking);
+                                        } else {
+                                          alert("No student email logged on this booking. Launching high-speed WhatsApp receipt instead!");
+                                          await generateAndWhatsAppDoc(booking, "receipt");
+                                        }
+                                      } else {
+                                        await generateAndWhatsAppDoc(booking, "receipt");
+                                      }
+                                    }, 400);
+                                  }
+                                }}
                                 className="h-4 w-4 rounded-md text-blue-600 focus:ring-blue-500 border-neutral-300 transition-all cursor-pointer accent-blue-600"
                                 title={isCompleted ? "Mark as Pending" : "Mark as Completed / Paid"}
                               />
@@ -887,17 +1472,47 @@ export default function AdminDashboard({
                             </td>
                             {/* Operations */}
                             <td className="p-4 text-right">
-                              <button
-                                onClick={() => {
-                                  if (confirm("Delete this booking log? This will not cancel their booking but deletes this record from local logs.")) {
-                                    onDeleteBooking(booking.id);
-                                  }
-                                }}
-                                className="bg-red-50 hover:bg-red-100/70 text-red-650 rounded-lg p-2 transition-all cursor-pointer"
-                                title="Delete Log Record"
-                              >
-                                <Trash2 size={13} />
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => generateAndWhatsAppDoc(booking, isCompleted ? "receipt" : "invoice")}
+                                  className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer shadow-xs"
+                                  title="Download PDF & Send Receipt via WhatsApp to Student"
+                                >
+                                  <MessageSquare size={11} className="text-emerald-600 animate-pulse" />
+                                  <span>WhatsApp {isCompleted ? "Receipt" : "Invoice"}</span>
+                                </button>
+
+                                {booking.studentEmail && (
+                                  <button
+                                    onClick={() => generateAndSendPDFReceipt(booking)}
+                                    disabled={sendingPdfId === booking.id}
+                                    className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                                      isCompleted
+                                        ? "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                                        : "bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200"
+                                    }`}
+                                    title="Send formal PDF Invoice/Receipt"
+                                  >
+                                    {sendingPdfId === booking.id ? (
+                                      <Loader2 size={11} className="animate-spin text-blue-600" />
+                                    ) : (
+                                      <Mail size={11} className={isCompleted ? "text-slate-500" : "text-blue-600"} />
+                                    )}
+                                    <span>{isCompleted ? "Email Receipt" : "Email Invoice"}</span>
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    if (confirm("Delete this booking log? This will not cancel their booking but deletes this record from local logs.")) {
+                                      onDeleteBooking(booking.id);
+                                    }
+                                  }}
+                                  className="bg-red-50 hover:bg-red-100/70 text-red-650 rounded-lg p-2 transition-all cursor-pointer inline-flex items-center"
+                                  title="Delete Log Record"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1210,88 +1825,221 @@ export default function AdminDashboard({
                 </div>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Deposits Paid and Details of the Payer section */}
-            <div className="bg-white border border-neutral-200 hover:border-blue-105 rounded-2xl p-5 shadow-xs space-y-4 transition-all">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
+        {/* Deposits Ledger Tab */}
+        {activeTab === "deposits" && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Header summary cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Verified Deposits</span>
+                  <div className="text-2xl font-black mt-1 text-emerald-400">
+                    ${bookings
+                      .filter(b => b.completed && b.depositChoice && b.depositChoice !== "None")
+                      .reduce((sum, b) => sum + (b.customDepositAmount || 0), 0)} USD
+                  </div>
+                </div>
+                <div className="bg-emerald-500/10 text-emerald-400 p-2.5 rounded-xl">
+                  <Coins size={20} />
+                </div>
+              </div>
+
+              <div className="bg-white border text-neutral-800 rounded-2xl p-4 flex items-center justify-between shadow-xs">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400">Pending Safe Auditing</span>
+                  <div className="text-2xl font-black mt-1 text-amber-655">
+                    ${bookings
+                      .filter(b => !b.completed && b.depositChoice && b.depositChoice !== "None")
+                      .reduce((sum, b) => sum + (b.customDepositAmount || 0), 0)} USD
+                  </div>
+                </div>
+                <div className="bg-amber-50 text-amber-600 p-2.5 rounded-xl">
+                  <Clock size={20} />
+                </div>
+              </div>
+
+              <div className="bg-white border text-neutral-800 rounded-2xl p-4 flex items-center justify-between shadow-xs">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400">Total Deposits Volume</span>
+                  <div className="text-2xl font-black mt-1 text-blue-600">
+                    {bookings.filter(b => b.depositChoice && b.depositChoice !== "None").length} Payer Logs
+                  </div>
+                </div>
+                <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+                  <ClipboardList size={20} />
+                </div>
+              </div>
+            </div>
+
+            {/* Deposits Ledger Search / Filter block */}
+            <div className="bg-white border rounded-2xl p-5 space-y-4 shadow-xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div>
                   <h3 className="font-bold text-neutral-800 text-sm flex items-center gap-1.5">
-                    <Coins className="text-emerald-600 animate-pulse" size={16} /> Paid Deposits & Payer Details Ledger
+                    <Coins className="text-amber-500 animate-pulse" size={16} /> MSU Placement Deposit Ledger
                   </h3>
                   <p className="text-[10px] text-neutral-400 mt-1">
                     Direct ledger log tracking landlord deposit payment allocations and student payer information.
                   </p>
                 </div>
-                <div className="bg-emerald-50 text-emerald-800 text-[10px] font-black tracking-wide uppercase px-2.5 py-1 rounded-lg shrink-0 w-fit">
-                  Total Deposits Paid: ${bookings
-                    .filter(b => b.completed && b.depositChoice && b.depositChoice !== "None")
-                    .reduce((sum, b) => sum + (b.customDepositAmount || 0), 0)} USD Included
+                <div className="w-full md:w-64">
+                  <input
+                    type="text"
+                    placeholder="Search by student name or email..."
+                    value={depositsSearchQuery}
+                    onChange={(e) => setDepositsSearchQuery(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-200 p-2.5 text-xs bg-slate-50 focus:bg-white outline-none focus:border-blue-500 placeholder-neutral-400 transition"
+                  />
                 </div>
               </div>
 
-              {bookings.filter(b => b.depositChoice && b.depositChoice !== "None").length === 0 ? (
-                <div className="py-8 text-center text-neutral-400 text-xs font-semibold">
-                  No payer upfront deposits registered yet.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-neutral-500">
-                    <thead className="bg-neutral-50 text-neutral-700 font-extrabold uppercase tracking-wider border-b text-[9px]">
-                      <tr>
-                        <th className="p-3">Payer Contact Detail</th>
-                        <th className="p-3">Target House</th>
-                        <th className="p-3">Deposit Level (Upfront)</th>
-                        <th className="p-3 text-right">Proof screenshot / Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100 text-[11px]">
-                      {bookings
-                        .filter(b => b.depositChoice && b.depositChoice !== "None")
-                        .map((b) => {
+              {/* Table */}
+              {(() => {
+                const filtered = bookings
+                  .filter(b => b.depositChoice && b.depositChoice !== "None")
+                  .filter(b => {
+                    if (!depositsSearchQuery) return true;
+                    const q = depositsSearchQuery.toLowerCase();
+                    return (
+                      b.studentName.toLowerCase().includes(q) ||
+                      (b.studentEmail && b.studentEmail.toLowerCase().includes(q))
+                    );
+                  });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-12 border-2 border-dashed rounded-xl text-center text-neutral-400 text-xs font-semibold">
+                      {depositsSearchQuery ? "No matching payment logs found for search query." : "No deposits registered."}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="overflow-x-auto rounded-xl border border-neutral-100">
+                    <table className="w-full text-left text-xs text-neutral-500">
+                      <thead className="bg-neutral-50 text-neutral-700 font-extrabold uppercase tracking-wider border-b text-[10px]">
+                        <tr>
+                          <th className="p-4 text-center w-4">Tick Paid</th>
+                          <th className="p-4">Student details</th>
+                          <th className="p-4">Target Room House</th>
+                          <th className="p-3">Deposit level (Upfront)</th>
+                          <th className="p-4 text-right">Operations and digital PDF triggers</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-100 font-semibold">
+                        {filtered.map((b) => {
                           const isCompleted = !!b.completed;
-                          const depositAmtText = b.depositChoice === "Full" ? `Full Deposit Upfront (${b.customDepositAmount ? `$${b.customDepositAmount}` : "Room Price"} USD)` : `Custom Deposit Offer ($${b.customDepositAmount} USD)`;
+                          const depositAmtText = b.depositChoice === "Full" 
+                            ? `Full Deposit (${b.customDepositAmount ? `$${b.customDepositAmount}` : "Room Price"} USD)` 
+                            : `Custom Deposit Offer ($${b.customDepositAmount} USD)`;
+
                           return (
-                            <tr key={b.id} className="hover:bg-neutral-50/50 transition-colors">
-                              <td className="p-3">
-                                <div className="font-bold text-neutral-800 text-xs">{b.studentName}</div>
-                                <div className="text-[10px] text-neutral-400 mt-0.5 space-y-0.5">
-                                  <div>✉️ {b.studentEmail || "No Email Address Provided"}</div>
+                            <tr 
+                              key={b.id} 
+                              className={`hover:bg-neutral-50/50 transition-colors ${
+                                isCompleted ? "bg-emerald-50/15" : ""
+                              }`}
+                            >
+                              {/* Toggle Completion */}
+                              <td className="p-4 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isCompleted}
+                                  onChange={async () => {
+                                    onToggleBookingCompleted?.(b.id);
+                                    if (!isCompleted && b.studentEmail) {
+                                      setTimeout(async () => {
+                                        const sendNow = window.confirm(
+                                          `Deposit verified complete for ${b.studentName}!\n\nWould you like to automatically generate and dispatch an official DOPES PDF Receipt to ${b.studentEmail}?`
+                                        );
+                                        if (sendNow) {
+                                          await generateAndSendPDFReceipt(b);
+                                        }
+                                      }, 400);
+                                    }
+                                  }}
+                                  className="h-4 w-4 rounded-md text-blue-600 focus:ring-blue-500 border-neutral-300 transition-all cursor-pointer accent-blue-600"
+                                  title={isCompleted ? "Mark Pending" : "Mark Paid & Confirmed"}
+                                />
+                              </td>
+
+                              {/* Student detail */}
+                              <td className="p-4">
+                                <div className="font-bold text-neutral-800 text-sm flex items-center gap-1.5">
+                                  {b.studentName}
+                                  {isCompleted && (
+                                    <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded">
+                                      VERIFIED
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-neutral-400 mt-0.5 space-y-0.5">
+                                  {b.studentEmail && <div className="text-neutral-500">✉️ {b.studentEmail}</div>}
                                   <div>📞 {b.studentPhone}</div>
                                 </div>
                               </td>
-                              <td className="p-3">
-                                <span className="font-semibold text-neutral-700 bg-neutral-100 px-2 py-1 rounded-md text-[10px]">
+
+                              {/* House Title */}
+                              <td className="p-4">
+                                <span className="font-bold text-blue-900 bg-blue-50 px-2 py-1 rounded-md text-[10px]">
                                   {b.houseTitle}
                                 </span>
                               </td>
+
+                              {/* Offer Details */}
                               <td className="p-3">
-                                <div className="font-bold text-emerald-700 flex flex-col">
-                                  <span>{depositAmtText}</span>
-                                  {b.paymentMethod && (
-                                    <span className="text-[9px] text-neutral-400 font-medium">Payment Mode: {b.paymentMethod}</span>
-                                  )}
-                                </div>
+                                <span className="font-black text-emerald-700 block text-xs">
+                                  {depositAmtText}
+                                </span>
+                                {b.paymentMethod && (
+                                  <span className="text-[9px] text-neutral-400 block mt-0.5 font-medium">Mode: {b.paymentMethod}</span>
+                                )}
                               </td>
-                              <td className="p-3 text-right">
-                                <div className="flex flex-col items-end gap-1.5 font-medium">
-                                  {isCompleted ? (
-                                    <span className="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded text-[9px] uppercase tracking-wider">
-                                      ✓ Verified Paid
-                                    </span>
-                                  ) : (
-                                    <span className="bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded text-[9px] uppercase tracking-wider">
-                                      ⏱ Pending Verify
-                                    </span>
-                                  )}
+
+                              {/* Actions */}
+                              <td className="p-4 text-right">
+                                <div className="flex items-center justify-end gap-2.5">
                                   {b.proofOfPaymentBase64 && (
                                     <button
                                       onClick={() => {
                                         setProofPreview(b.proofOfPaymentBase64!);
                                         setPreviewBookingName(b.studentName);
                                       }}
-                                      className="text-blue-600 hover:text-blue-700 text-[10px] font-bold underline flex items-center gap-1 cursor-pointer mt-1"
+                                      className="bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-lg text-[10px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
                                     >
-                                      View Receipt Proof
+                                      <Eye size={11} /> Proof
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() => generateAndWhatsAppDoc(b, isCompleted ? "receipt" : "invoice")}
+                                    className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer shadow-xs"
+                                    title="Download PDF and Send via WhatsApp to Student"
+                                  >
+                                    <MessageSquare size={11} className="text-emerald-600" />
+                                    <span>WhatsApp {isCompleted ? "Receipt" : "Invoice"}</span>
+                                  </button>
+
+                                  {b.studentEmail && (
+                                    <button
+                                      onClick={() => generateAndSendPDFReceipt(b)}
+                                      disabled={sendingPdfId === b.id}
+                                      className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                                        isCompleted
+                                          ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200"
+                                          : "bg-blue-50 hover:bg-blue-105 text-blue-800 border-blue-250"
+                                      }`}
+                                      title="Generate and Send Official Receipt PDF"
+                                    >
+                                      {sendingPdfId === b.id ? (
+                                        <Loader2 size={11} className="animate-spin text-blue-600" />
+                                      ) : (
+                                        <Mail size={11} className={isCompleted ? "text-emerald-600" : "text-blue-550"} />
+                                      )}
+                                      <span>{isCompleted ? "Email Receipt" : "Email Invoice"}</span>
                                     </button>
                                   )}
                                 </div>
@@ -1299,10 +2047,11 @@ export default function AdminDashboard({
                             </tr>
                           );
                         })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -1344,6 +2093,101 @@ export default function AdminDashboard({
                   className="bg-neutral-200 hover:bg-neutral-300 text-neutral-800 font-bold px-4 py-2 rounded-lg text-xs transition"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Custom SMTP Gmail Setup Modal Overlay */}
+        {showSmtpSettings && (
+          <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+            <div className="relative max-w-lg w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-neutral-100 flex flex-col">
+              <div className="bg-blue-900 px-6 py-4 flex items-center justify-between text-white shrink-0">
+                <div className="flex items-center gap-2">
+                  <Settings size={18} className="text-blue-300" />
+                  <h4 className="font-bold text-sm">Gmail Manual SMTP Setup</h4>
+                </div>
+                <button
+                  onClick={() => setShowSmtpSettings(false)}
+                  className="rounded-full bg-blue-950 p-1.5 hover:bg-blue-800 text-neutral-200 transition cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              
+              <div className="p-6 bg-white overflow-y-auto max-h-[75vh] space-y-5 text-xs text-neutral-600 font-medium">
+                <div className="bg-blue-50 border border-blue-250 text-blue-950 p-3.5 rounded-xl space-y-1">
+                  <span className="font-extrabold text-blue-900 block uppercase tracking-wider text-[9px]">How to setup manual Gmail:</span>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>Go to your Google Account: <a href="https://myaccount.google.com" target="_blank" rel="noreferrer" className="text-blue-700 underline font-bold">myaccount.google.com</a></li>
+                    <li>Ensure <strong>2-Step Verification</strong> is active on your Account Security panel.</li>
+                    <li>Search or go directly to <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-blue-700 underline font-bold">myaccount.google.com/apppasswords</a></li>
+                    <li>Create an app profile named <strong>"Dopes Portal"</strong> and copy the 16-character generated password code.</li>
+                    <li>Paste your Gmail email address & App Password below. Click Save to authorize manual dispatch!</li>
+                  </ol>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 mb-1">
+                      Sender Gmail Address
+                    </label>
+                    <input
+                      type="email"
+                      className="w-full px-3 py-2 bg-neutral-50 border rounded-lg focus:ring-1 focus:ring-blue-500 outline-hidden font-bold text-neutral-800"
+                      value={smtpUser}
+                      onChange={(e) => setSmtpUser(e.target.value)}
+                      placeholder="e.g. dopesaccommodationagency@gmail.com"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-neutral-500 mb-0.5">
+                      Gmail App Password (16-char)
+                    </label>
+                    <p className="text-[10px] text-neutral-400 mb-1.5 font-normal">Never enter your standard Google Account password. Google requires the 16-character SMTP custom App Password code.</p>
+                    <input
+                      type="password"
+                      className="w-full px-3 py-2 bg-neutral-50 border rounded-lg focus:ring-1 focus:ring-blue-500 outline-hidden font-mono text-neutral-800 animate-pulse"
+                      value={smtpPass}
+                      onChange={(e) => setSmtpPass(e.target.value)}
+                      placeholder="e.g. abcd efgh ijkl mnop"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-neutral-50 px-6 py-4 flex justify-end gap-2.5 border-t shrink-0">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem("dopes_gmail_user");
+                    localStorage.removeItem("dopes_gmail_app_password");
+                    setSmtpUser("dopesaccommodationagency@gmail.com");
+                    setSmtpPass("");
+                    alert("SMTP credentials reset to default configurations!");
+                  }}
+                  className="bg-neutral-200 hover:bg-neutral-300 text-neutral-700 hover:text-neutral-800 px-4 py-2 rounded-xl text-xs transition cursor-pointer font-bold"
+                >
+                  Clear Config
+                </button>
+                <button
+                  onClick={() => {
+                    if (!smtpUser.includes("@gmail.com")) {
+                      alert("Validation error: Gmail sender address must be a valid @gmail.com address!");
+                      return;
+                    }
+                    if (smtpPass.length > 0 && smtpPass.replace(/\s+/g, "").length < 12) {
+                      alert("Validation warning: The app password looks shorter than standard 16 characters. Please double check that you copy-pasted the SMTP APP PASSWORD generated by Google security.");
+                    }
+                    localStorage.setItem("dopes_gmail_user", smtpUser.trim());
+                    localStorage.setItem("dopes_gmail_app_password", smtpPass.trim().replace(/\s+/g, ""));
+                    alert("Success! Your Google App SMTP Credentials are now active and synchronized locally.");
+                    setShowSmtpSettings(false);
+                  }}
+                  className="bg-blue-900 hover:bg-blue-950 text-white font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer"
+                >
+                  Save Active settings
                 </button>
               </div>
             </div>

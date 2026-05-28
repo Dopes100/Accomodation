@@ -12,17 +12,17 @@ async function startServer() {
 
   // Email API route utilizing Gmail SMTP
   app.post("/api/send-email", async (req, res) => {
-    const { to, subject, html, text } = req.body;
+    const { to, subject, html, text, gmailUser, gmailAppPassword } = req.body;
 
     if (!to || !subject) {
       return res.status(400).json({ error: "Missing recipient (to) or subject." });
     }
 
-    const senderEmail = process.env.GMAIL_USER || "dopesaccommodationagency@gmail.com";
-    const appPassword = process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS;
+    const senderEmail = gmailUser || process.env.GMAIL_USER || "dopesaccommodationagency@gmail.com";
+    const appPassword = gmailAppPassword || process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS;
 
     if (!appPassword) {
-      console.warn("Gmail App Password (GMAIL_APP_PASSWORD) not configured. Processing mock success...");
+      console.warn("Gmail App Password not configured. Processing mock success...");
       return res.json({ 
         success: true, 
         simulated: true,
@@ -39,13 +39,17 @@ async function startServer() {
         },
       });
 
-      const mailOptions = {
+      const mailOptions: any = {
         from: `"Dopes Accommodation Agency" <${senderEmail}>`,
         to,
         subject,
         html: html || undefined,
         text,
       };
+
+      if (req.body.attachments && Array.isArray(req.body.attachments)) {
+        mailOptions.attachments = req.body.attachments;
+      }
 
       const info = await transporter.sendMail(mailOptions);
       console.log("Email successfully dispatched to:", to, "ID:", info.messageId);
@@ -54,7 +58,9 @@ async function startServer() {
       console.error("Nodemailer dispatch failure:", error);
       
       const errMsg = error instanceof Error ? error.message : String(error);
-      if (errMsg.includes("535") || errMsg.toLowerCase().includes("invalid login")) {
+      const isAuthFailure = errMsg.includes("535") || errMsg.toLowerCase().includes("invalid login") || errMsg.toLowerCase().includes("auth");
+      
+      if (isAuthFailure) {
         console.error("================ GMAIL AUTHENTICATION FAILURE (535) INTERCEPTED ================");
         console.error(`Attempted Login User: ${senderEmail}`);
         console.error("Troubleshooting Checklist:");
@@ -65,10 +71,11 @@ async function startServer() {
         console.error("===============================================================================");
       }
 
-      return res.status(500).json({ 
-        error: "Failed to send email due to SMTP auth or login rejection.", 
+      return res.json({ 
+        success: false, 
+        warning: isAuthFailure ? "SMTP authentication failed. Your Gmail App Password was rejected by Google." : "SMTP dispatch failed.", 
         details: errMsg,
-        suggestion: "Please configure GMAIL_USER and GMAIL_APP_PASSWORD in the Settings/Secrets panel corresponding to the proper Gmail address."
+        suggestion: "Please configure your 16-character Google App Password (excluding spaces) and verify your Gmail User matches your account. Generate details at: https://myaccount.google.com/apppasswords"
       });
     }
   });

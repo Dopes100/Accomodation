@@ -121,12 +121,37 @@ export function subscribeToBookings(onUpdate: (bookings: Booking[]) => void, onE
 }
 
 /**
+ * Utility helper to recursively sanitize objects for Firestore by removing any keys with 'undefined' values.
+ * This ensures batch.set, setDoc, and updateDoc operations never crash due to unsupported undefined types.
+ */
+function sanitizeForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) {
+    // Firestore accepts null but not undefined
+    return (data === undefined ? null : data) as any;
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeForFirestore(item)) as any;
+  }
+  if (typeof data === "object") {
+    const cleaned: any = {};
+    for (const key of Object.keys(data as any)) {
+      const val = (data as any)[key];
+      if (val !== undefined) {
+        cleaned[key] = sanitizeForFirestore(val);
+      }
+    }
+    return cleaned;
+  }
+  return data;
+}
+
+/**
  * Adds or updates a house listing in Firestore.
  */
 export async function saveHouseToFirestore(house: House) {
   const path = `houses/${house.id}`;
   try {
-    await setDoc(doc(db, "houses", house.id), house);
+    await setDoc(doc(db, "houses", house.id), sanitizeForFirestore(house));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -155,7 +180,7 @@ export async function submitBookingToFirestore(booking: Booking, currentHouse: H
   try {
     // 1. Create booking document
     const bookingRef = doc(db, "bookings", booking.id);
-    batch.set(bookingRef, booking);
+    batch.set(bookingRef, sanitizeForFirestore(booking));
 
     // 2. Subtract slots on the referenced house
     const remainingSlots = Math.max(0, currentHouse.availableSlots - booking.headsCount);
@@ -165,7 +190,7 @@ export async function submitBookingToFirestore(booking: Booking, currentHouse: H
       isAvailable: remainingSlots > 0
     };
     const houseRef = doc(db, "houses", currentHouse.id);
-    batch.set(houseRef, updatedHouse);
+    batch.set(houseRef, sanitizeForFirestore(updatedHouse));
 
     // Commit atomic transaction
     await batch.commit();
@@ -193,7 +218,7 @@ export async function toggleBookingCompletedInFirestore(booking: Booking) {
   const path = `bookings/${booking.id}`;
   try {
     const updated = { ...booking, completed: !booking.completed };
-    await setDoc(doc(db, "bookings", booking.id), updated);
+    await setDoc(doc(db, "bookings", booking.id), sanitizeForFirestore(updated));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }

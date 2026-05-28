@@ -171,6 +171,12 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
       alert("Please fill out all required student details correctly corresponding to your identification.");
       return;
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(studentEmail)) {
+      alert("Please provide a valid email format (e.g. Tendai@gmail.com). This is required to dispatch securing documents.");
+      return;
+    }
     
     // Validate study levels or other variables
     if (paymentMethod === "EcoCash") {
@@ -222,62 +228,104 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
 
     setEmailProgress("connecting");
     
-    // Structure formal email HTML payload
+    // Structure formal email HTML invoice payload
     const depositDesc = depositChoice === "Full" 
       ? `Full Deposit Upfront ($${house.price} USD)` 
       : (depositChoice === "None" ? "No Upfront Deposit" : `Custom Deposit Offer ($${customDepositAmount} USD)`);
 
     const agentFeeDetail = `$${headsCount * 20} USD`;
     const totalSent = paymentMethod === "EcoCash" ? headsCount * 20 + 1 + finalDepositValue : headsCount * 20 + finalDepositValue;
+    const invoiceNumber = `INV-DOPES-${Math.floor(100000 + Math.random() * 899999)}`;
+    const invoiceDate = new Date().toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' });
 
     const emailHtmlAndText = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-        <h2 style="color: #1d4ed8; text-transform: uppercase; font-size: 18px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; margin-top: 0;">Portal Booking Complete & Secure</h2>
-        <p>Dear <strong>${studentName}</strong>,</p>
-        <p>Your agent securing fee and deposit choice are registered. Your space is now held secure at <strong>${house.title}</strong> (${house.location}) on the Dopes Accommodation portal!</p>
-        
-        <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px;">
-          <tr style="background: #f8fafc;">
-            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Accommodation</td>
-            <td style="padding: 10px; border: 1px solid #e2e8f0;">${house.title} (${house.location})</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Rooms Reserved (Spots)</td>
-            <td style="padding: 10px; border: 1px solid #e2e8f0;">${headsCount} Student(s)</td>
-          </tr>
-          <tr style="background: #f8fafc;">
-            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Deposit Choice</td>
-            <td style="padding: 10px; border: 1px solid #e2e8f0; color: #047857; font-weight: bold;">${depositDesc}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Securing Agent Fee</td>
-            <td style="padding: 10px; border: 1px solid #e2e8f0;">${agentFeeDetail}</td>
-          </tr>
-          <tr style="background: #f8fafc;">
-            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Total Cash Value</td>
-            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; color: #1d4ed8;">$${totalSent} USD</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Securing Channel</td>
-            <td style="padding: 10px; border: 1px solid #e2e8f0;">${paymentMethod}</td>
-          </tr>
-          <tr style="background: #f8fafc;">
-            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Move-In Date</td>
-            <td style="padding: 10px; border: 1px solid #e2e8f0;">${targetMoveIn}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Payer Email</td>
-            <td style="padding: 10px; border: 1px solid #e2e8f0;">${studentEmail}</td>
-          </tr>
-        </table>
-        
-        <div style="background: #eff6ff; padding: 12px; border-radius: 8px; border: 1px solid #bfdbfe; font-size: 13px; color: #1e3a8a; margin-top: 15px;">
-          <strong>Wait For Verification:</strong> Panashe Dondo is inspecting your EcoCash transaction screenshot proof of payment. Once verified, you will receive an official portal lease document for check-in.
+      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 30px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">Dopes Accommodation</h1>
+          <p style="margin: 5px 0 0 0; font-size: 13px; color: #bfdbfe; font-weight: 500;">Official Midlands State University Student Housing Provider</p>
         </div>
-        
-        <p style="font-size: 11px; color: #64748b; margin-top: 25px; text-align: center; border-t: 1px solid #f1f5f9; padding-top: 15px;">
-          Dopes Accommodation Agency • dopesaccommodationagency@gmail.com • Gweru, Zimbabwe.
-        </p>
+
+        <div style="padding: 30px;">
+          <!-- Invoice Meta Info -->
+          <div style="display: flex; justify-content: space-between; align-items: top; border-bottom: 1px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px;">
+            <div>
+              <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; tracking-wide: 1px; display: block; margin-bottom: 4px;">Status</span>
+              <span style="background-color: #fef3c7; color: #d97706; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase;">UNVERIFIED INVOICE</span>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 11px; font-weight: 850; text-transform: uppercase; color: #64748b; tracking-wide: 1px; display: block; margin-bottom: 2px;">Invoice Number</span>
+              <strong style="color: #0f172a; font-size: 15px; font-family: monospace;">${invoiceNumber}</strong>
+              <span style="display: block; font-size: 11px; color: #94a3b8; margin-top: 4px;">Date: ${invoiceDate}</span>
+            </div>
+          </div>
+
+          <p style="font-size: 14px; color: #334155; line-height: 1.6; margin-top: 0;">
+            Dear <strong>${studentName}</strong>,
+          </p>
+          <p style="font-size: 14px; color: #334155; line-height: 1.6;">
+            Your selected room space has been provisionally reserved. An official portal hold has been established for you at <strong>${house.title}</strong>, located in the ${house.location} region.
+          </p>
+          <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 25px;">
+            Please find the detailed financial breakdown for your slot acquisition transaction listed below.
+          </p>
+
+          <!-- Table Items -->
+          <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; overflow: hidden; margin-bottom: 25px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+              <thead>
+                <tr style="border-bottom: 1px solid #e2e8f0; background-color: #f1f5f9;">
+                  <th style="padding: 12px 16px; font-weight: 800; color: #475569; width: 65%;">Item Description</th>
+                  <th style="padding: 12px 16px; font-weight: 800; color: #475569; text-align: right; width: 35%;">Category Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 12px 16px; color: #334155;">
+                    <strong style="color: #0f172a; display: block;">MSU Securing Agent Fee</strong>
+                    <span style="font-size: 11px; color: #64748b;">Securing commision for ${headsCount} registered student(s)</span>
+                  </td>
+                  <td style="padding: 12px 16px; text-align: right; color: #0f172a; font-weight: 600;">${agentFeeDetail}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 12px 16px; color: #334155;">
+                    <strong style="color: #0f172a; display: block;">Landlord Room Deposit</strong>
+                    <span style="font-size: 11px; color: #64748b;">Upfront choice: ${depositDesc}</span>
+                  </td>
+                  <td style="padding: 12px 16px; text-align: right; color: #0f172a; font-weight: 600;">$${finalDepositValue} USD</td>
+                </tr>
+                ${paymentMethod === "EcoCash" ? `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 12px 16px; color: #334155;">
+                    <strong style="color: #0f172a; display: block;">EcoCash Channel Fee</strong>
+                    <span style="font-size: 11px; color: #64748b;">Standard carrier service levy</span>
+                  </td>
+                  <td style="padding: 12px 16px; text-align: right; color: #0f172a; font-weight: 600;">$1 USD</td>
+                </tr>
+                ` : ""}
+                <tr style="background-color: #f1f5f9;">
+                  <td style="padding: 12px 16px; font-weight: 800; color: #1e3a8a;">Invoice Total due (USD)</td>
+                  <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: #1e3a8a; font-size: 15px;">$${totalSent} USD</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Crucial Alert -->
+          <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 16px; margin-bottom: 30px;">
+            <h4 style="margin: 0 0 5px 0; font-size: 13px; font-weight: 700; color: #1e3a8a; text-transform: uppercase;">Verification Process & Moving-In Details</h4>
+            <p style="margin: 0; font-size: 12px; color: #1e3a8a; line-height: 1.5;">
+              Our chief agent <strong>Panashe Dondo</strong> is performing standard auditing of your transaction proof. Once approved and ticked complete on the MSU admin ledger, you will instantly receive your official digital <strong>PDF Payment Receipt</strong>. Show that PDF receipt to your landlord to check in on <strong>${targetMoveIn}</strong>.
+            </p>
+          </div>
+
+          <!-- Signature details -->
+          <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; font-size: 12px; color: #64748b; line-height: 1.5; text-align: center;">
+            <p style="margin: 0; font-weight: 700; color: #334155;">Dopes Accommodation Agency Gweru Bureau</p>
+            <p style="margin: 3px 0 0 0;">dopesaccommodationagency@gmail.com • +263 78 073 6072</p>
+            <p style="margin: 5px 0 0 0; font-size: 11px; color: #94a3b8;">This is a system generated digital securing invoice holding reservation spaces.</p>
+          </div>
+        </div>
       </div>
     `;
 
@@ -287,9 +335,9 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
       try {
         const payload = {
           to: studentEmail,
-          subject: `DOPES Accommodation Secured: ${house.title}`,
+          subject: `DOPES OFFICIAL RESERVATION INVOICE [${invoiceNumber}]`,
           html: emailHtmlAndText,
-          text: `Hello ${studentName}. Your securing fee and deposit details are successfully registered for ${house.title}.`,
+          text: `Dear ${studentName}. Your provisional securing invoice has been generated for ${house.title} in Gweru. Your total due is $${totalSent} USD. Please finalize the verification on WhatsApp.`,
         };
         
         const response = await fetch("/api/send-email", {
@@ -454,9 +502,17 @@ Please confirm my mail delivery receipt confirmation from dopesaccommodationagen
                       value={studentEmail}
                       onChange={(e) => setStudentEmail(e.target.value)}
                       placeholder="e.g. tendai@gmail.com"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs outline-none focus:border-blue-500 focus:bg-white transition-all font-semibold"
+                      className={`w-full bg-slate-50 border rounded-xl p-3 text-xs outline-none focus:bg-white transition-all font-semibold ${
+                        studentEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)
+                          ? "border-red-400 focus:border-red-500"
+                          : "border-slate-200 focus:border-blue-500"
+                      }`}
                     />
-                    <span className="text-[9px] text-neutral-400 mt-0.5 block">Official receipts sent here.</span>
+                    {studentEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail) ? (
+                      <span className="text-[9px] text-red-500 mt-0.5 font-bold block">⚠️ Please enter a valid email format.</span>
+                    ) : (
+                      <span className="text-[9px] text-neutral-400 mt-0.5 block">Official securing invoices sent here.</span>
+                    )}
                   </div>
                 </div>
 
