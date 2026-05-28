@@ -109,6 +109,8 @@ export default function AdminDashboard({
   const [maxSlots, setMaxSlots] = useState<number>(12);
   
   const [showAddForm, setShowAddForm] = useState(false);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [previewBookingName, setPreviewBookingName] = useState<string>("");
 
   // Default select first house for manual booking if available
   React.useEffect(() => {
@@ -823,10 +825,34 @@ export default function AdminDashboard({
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-neutral-400 mt-0.5 flex items-center gap-1.5">
-                                <span className="bg-neutral-100 px-1.5 py-0.5 rounded-md font-medium text-[10px]">Level {booking.gender}</span>
+                              <div className="text-[11px] text-neutral-400 mt-0.5 flex flex-wrap items-center gap-1.5">
+                                <span className="bg-neutral-100 px-1.5 py-0.5 rounded-md font-medium text-[10px]">{booking.gender}</span>
                                 <span>{booking.studentPhone}</span>
+                                {booking.studentEmail && (
+                                  <span className="text-neutral-500 font-medium">✉️ {booking.studentEmail}</span>
+                                )}
+                                {booking.paymentMethod === "EcoCash" && (
+                                  <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                    EcoCash: {booking.ecoCashNumber || "Self Direct"}
+                                  </span>
+                                )}
+                                {booking.depositChoice && (
+                                  <span className="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                    Deposit Offer: {booking.depositChoice === "Full" ? "Full" : booking.depositChoice === "None" ? "No Upfront" : `$${booking.customDepositAmount} USD`}
+                                  </span>
+                                )}
                               </div>
+                              {booking.proofOfPaymentBase64 && (
+                                <button
+                                  onClick={() => {
+                                    setProofPreview(booking.proofOfPaymentBase64!);
+                                    setPreviewBookingName(booking.studentName);
+                                  }}
+                                  className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200 mt-1.5 inline-flex items-center gap-1 transition-colors cursor-pointer"
+                                >
+                                  <Eye size={12} /> View Proof Screenshot
+                                </button>
+                              )}
                             </td>
                             {/* Target House */}
                             <td className="p-4">
@@ -1182,6 +1208,49 @@ export default function AdminDashboard({
                     </button>
                   </form>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EcoCash Proof Preview Overlay */}
+        {proofPreview && (
+          <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4">
+            <div className="relative max-w-2xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-neutral-100">
+              <div className="bg-neutral-950 px-6 py-4 flex items-center justify-between text-white">
+                <div>
+                  <h4 className="font-bold text-sm">EcoCash Proof of Payment</h4>
+                  <p className="text-[10px] text-neutral-400">Submitted by: {previewBookingName}</p>
+                </div>
+                <button
+                  onClick={() => setProofPreview(null)}
+                  className="rounded-full bg-neutral-800 p-1.5 hover:bg-neutral-700 text-neutral-200 transition"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="p-4 bg-neutral-50 flex justify-center items-center max-h-[70vh] overflow-y-auto">
+                <img 
+                  src={proofPreview} 
+                  alt="EcoCash Proof of Payment" 
+                  className="max-w-full max-h-[60vh] object-contain rounded-lg border shadow-xs"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <div className="bg-neutral-100 p-4 flex justify-end gap-2 border-t text-right">
+                <a
+                  href={proofPreview}
+                  download={`EcoCash_Proof_${previewBookingName}`}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition"
+                >
+                  Download Image
+                </a>
+                <button
+                  onClick={() => setProofPreview(null)}
+                  className="bg-neutral-200 hover:bg-neutral-300 text-neutral-800 font-bold px-4 py-2 rounded-lg text-xs transition"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

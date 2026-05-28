@@ -37,6 +37,12 @@ export interface Booking {
   notes: string;
   timestamp: string;
   completed?: boolean;
+  paymentMethod?: "Cash" | "EcoCash";
+  ecoCashNumber?: string;
+  depositChoice?: "Full" | "None" | "Custom";
+  customDepositAmount?: number;
+  studentEmail?: string;
+  proofOfPaymentBase64?: string;
 }
 
 // Pre-populated realistic student accommodations around Midlands State University (MSU) Gweru, Zimbabwe.
