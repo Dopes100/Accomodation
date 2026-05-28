@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from "react";
+import { jsPDF } from "jspdf";
 import { House, Booking } from "../types";
 import { 
   Lock, 
@@ -144,7 +145,6 @@ export default function AdminDashboard({
     try {
       setSendingPdfId(booking.id);
       
-      const { jsPDF } = await import("jspdf");
       const doc = new jsPDF();
       
       // Draw background decorations
@@ -431,7 +431,6 @@ export default function AdminDashboard({
 
   const generateAndWhatsAppDoc = async (booking: Booking, type: "invoice" | "receipt") => {
     try {
-      const { jsPDF } = await import("jspdf");
       const doc = new jsPDF();
       
       // Draw background decorations
