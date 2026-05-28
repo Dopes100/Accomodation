@@ -402,7 +402,16 @@ export default function AdminDashboard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const data = await response.json();
+      
+      const responseText = await response.text();
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr: any) {
+        console.error("Non-JSON API Response received:", responseText);
+        throw new Error(`Server returned a non-JSON webpage (status: ${response.status}). Response sample: "${responseText.substring(0, 160)}..."`);
+      }
+      
       if (data.success) {
         if (data.simulated) {
           alert(`PDF Generated Successful! (Sandbox Mode)\n\nAn official DOPES PDF receipt has been successfully compiled for ${booking.studentName}.\n\nGmail credentials are not fully active, so the email delivery has been logged securely.\n\nType: ${data.details || 'Standard Sandbox'}`);

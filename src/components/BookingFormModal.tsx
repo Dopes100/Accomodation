@@ -348,7 +348,14 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
           body: JSON.stringify(payload),
         });
         
-        const data = await response.json();
+        const responseText = await response.text();
+        let data: any;
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseErr: any) {
+          console.error("Non-JSON API error response:", responseText);
+          data = { success: false, error: responseText };
+        }
         console.log("Email dispatch service response:", data);
       } catch (error) {
         console.error("Failed to make /api/send-email request:", error);

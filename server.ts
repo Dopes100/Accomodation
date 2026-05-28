@@ -7,8 +7,9 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Parse incoming JSON payloads
-  app.use(express.json());
+  // Parse incoming JSON payloads with a higher limit for base64 documents/attachments
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // Email API route utilizing Gmail SMTP
   app.post("/api/send-email", async (req, res) => {
