@@ -123,6 +123,18 @@ export default function AdminDashboard({
   const [showAddForm, setShowAddForm] = useState(false);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [previewBookingName, setPreviewBookingName] = useState<string>("");
+  
+  const [emailStatusModal, setEmailStatusModal] = useState<{
+    show: boolean;
+    success: boolean;
+    simulated: boolean;
+    title: string;
+    message: string;
+    booking?: Booking;
+    warning?: string;
+    details?: string;
+    suggestion?: string;
+  } | null>(null);
 
   // Default select first house for manual booking if available
   React.useEffect(() => {
@@ -414,16 +426,50 @@ export default function AdminDashboard({
       
       if (data.success) {
         if (data.simulated) {
-          alert(`PDF Generated Successful! (Sandbox Mode)\n\nAn official DOPES PDF receipt has been successfully compiled for ${booking.studentName}.\n\nGmail credentials are not fully active, so the email delivery has been logged securely.\n\nType: ${data.details || 'Standard Sandbox'}`);
+          setEmailStatusModal({
+            show: true,
+            success: true,
+            simulated: true,
+            title: "PDF Compiled (Gmail Sandbox Mode)",
+            message: `An official DOPES PDF receipt has been successfully compiled for ${booking.studentName}.`,
+            booking,
+            details: data.details || "The mailer is currently in simulation mode.",
+            suggestion: "Configure your Gmail SMTP credentials below to toggle real-time email carrier delivery instantly!"
+          });
         } else {
-          alert(`Success! Official digital receipt PDF generated and dispatched securely to ${booking.studentEmail}.`);
+          setEmailStatusModal({
+            show: true,
+            success: true,
+            simulated: false,
+            title: "Email Dispatch Successful! 🎉",
+            message: `The official digital receipt PDF has been securely generated and successfully dispatched to ${booking.studentEmail}!`,
+            booking
+          });
         }
       } else {
-        alert(`Email DISPATCH FAILED!\n\nReason: ${data.warning || "Rejected"}\nDetails: ${data.details || "Check user/password info"}\n\nSuggestion: ${data.suggestion || "Ensure you configure your Gmail account and generate a 16-character App Password at myaccount.google.com/apppasswords"}`);
+        setEmailStatusModal({
+          show: true,
+          success: false,
+          simulated: false,
+          title: "Email Dispatch Failed ❌",
+          message: `We were unable to deliver the digital receipt for ${booking.studentName} due to an SMTP authentication error.`,
+          booking,
+          warning: data.warning,
+          details: data.details,
+          suggestion: data.suggestion
+        });
       }
     } catch (err: any) {
       console.error("PDF Receipt dispatch failure:", err);
-      alert("Error compiling PDF receipt: " + err.message);
+      setEmailStatusModal({
+        show: true,
+        success: false,
+        simulated: false,
+        title: "Compilation/Network Error ❌",
+        message: "An unexpected error occurred while compiling the PDF receipt or contacting the server.",
+        booking,
+        details: err.message
+      });
     } finally {
       setSendingPdfId(null);
     }
@@ -2060,6 +2106,172 @@ export default function AdminDashboard({
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        )}
+
+        {/* Custom Email Status Dialog Modal */}
+        {emailStatusModal && emailStatusModal.show && (
+          <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4 overflow-y-auto">
+            <div className="relative max-w-lg w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-neutral-100 flex flex-col my-8 animate-in fade-in zoom-in-95 duration-150">
+              
+              {/* Header based on status */}
+              {emailStatusModal.success && !emailStatusModal.simulated ? (
+                <div className="bg-emerald-600 px-6 py-5 text-white flex items-center gap-3 shrink-0">
+                  <div className="bg-emerald-700/50 p-2 rounded-full">
+                    <CheckCircle2 size={24} className="text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-base">{emailStatusModal.title}</h4>
+                    <p className="text-[11px] text-emerald-100 font-medium">Digital Receipt Delivered securely</p>
+                  </div>
+                </div>
+              ) : emailStatusModal.simulated ? (
+                <div className="bg-blue-800 px-6 py-5 text-white flex items-center gap-3 shrink-0">
+                  <div className="bg-blue-900/50 p-2 rounded-full">
+                    <Clock size={24} className="text-blue-100" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-base">{emailStatusModal.title}</h4>
+                    <p className="text-[11px] text-blue-100 font-medium">Local sandbox verification screen</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-rose-600 px-6 py-5 text-white flex items-center gap-3 shrink-0">
+                  <div className="bg-rose-700/50 p-2 rounded-full">
+                    <X size={24} className="text-white font-extrabold" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-base">{emailStatusModal.title}</h4>
+                    <p className="text-[11px] text-rose-100 font-medium">SMTP carrier dispatch problem</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Scrollable Content Pane */}
+              <div className="p-6 overflow-y-auto max-h-[65vh] space-y-4 text-xs font-medium text-neutral-600">
+                <div className="bg-neutral-50 p-4 rounded-xl space-y-2 border border-neutral-100">
+                  <div className="flex justify-between border-b pb-2 text-[10px] text-neutral-400 font-bold uppercase tracking-wider">
+                    <span>Active Audit Record</span>
+                    <span className="text-neutral-500 font-mono">REC-{emailStatusModal.booking?.id?.toUpperCase()}</span>
+                  </div>
+                  <p className="text-neutral-700 font-bold text-sm leading-relaxed">
+                    {emailStatusModal.message}
+                  </p>
+                  {emailStatusModal.booking && (
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-neutral-500 pt-2 border-t font-normal">
+                      <div>Student: <strong className="text-neutral-700 font-bold">{emailStatusModal.booking.studentName}</strong></div>
+                      <div>Destination Email: <strong className="text-neutral-700 font-bold">{emailStatusModal.booking.studentEmail}</strong></div>
+                    </div>
+                  )}
+                </div>
+
+                {/* If simulated or error, display the inline SMTP Setup flow */}
+                {(emailStatusModal.simulated || !emailStatusModal.success) && (
+                  <div className="bg-blue-50/70 border border-blue-200/60 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-1.5 text-blue-900 font-extrabold text-[10px] uppercase tracking-wider">
+                      <Settings size={13} className="text-blue-700" />
+                      <span>Configure & Enable Delivery to Client Email</span>
+                    </div>
+                    
+                    <p className="text-[11px] leading-relaxed text-blue-950 font-medium">
+                      {emailStatusModal.simulated 
+                        ? "Currently, SMTP App Credentials are of standard state, meaning simulation is logged rather than hitting their mailbox." 
+                        : "Email dispatch failed due to rejected credentials. Google SMTP requires you to save your personalized Google account settings."}
+                      {" Follow the instructions below to enable instant delivery:"}
+                    </p>
+
+                    <div className="bg-white/80 p-3 rounded-lg border border-blue-100 space-y-2 text-[10.5px] leading-relaxed text-blue-900">
+                      <p className="font-bold">Google Step-by-Step Security Setup:</p>
+                      <ol className="list-decimal pl-4 space-y-1 text-neutral-700 font-normal">
+                        <li>Open <a href="https://myaccount.google.com" target="_blank" rel="noreferrer" className="text-blue-700 underline font-extrabold">myaccount.google.com</a> and sign in.</li>
+                        <li>Turn on <strong>2-Step Verification</strong> on your Security tab.</li>
+                        <li>Go to <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-blue-700 underline font-extrabold">Google App Passwords</a> and create an app profile named "Dopes Accommodations".</li>
+                        <li>Copy the <strong>16-character code</strong> and enter it below.</li>
+                      </ol>
+                    </div>
+
+                    <div className="space-y-2.5 pt-1">
+                      <div>
+                        <label className="block text-[9px] font-extrabold uppercase tracking-wider text-neutral-500 mb-1">
+                          Sender Gmail Address
+                        </label>
+                        <input
+                          type="email"
+                          className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:ring-1 focus:ring-blue-500 outline-hidden font-bold text-neutral-800 text-[11px]"
+                          value={smtpUser}
+                          onChange={(e) => setSmtpUser(e.target.value)}
+                          placeholder="e.g. dopesaccommodationagency@gmail.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-extrabold uppercase tracking-wider text-neutral-500 mb-0.5">
+                          16-Character Google App Password
+                        </label>
+                        <input
+                          type="password"
+                          className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:ring-1 focus:ring-blue-500 outline-hidden font-mono text-neutral-800 text-[11px]"
+                          value={smtpPass}
+                          onChange={(e) => setSmtpPass(e.target.value)}
+                          placeholder="Pasted 16-digit code (excluding spaces)"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!smtpUser.includes("@gmail.com")) {
+                            alert("Please enter a valid @gmail.com address!");
+                            return;
+                          }
+                          const cleanPass = smtpPass.trim().replace(/\s+/g, "");
+                          if (cleanPass.length < 12) {
+                            alert("Google App Passwords must contain a valid 16-character code!");
+                            return;
+                          }
+                          
+                          // Save dynamic credentials
+                          localStorage.setItem("dopes_gmail_user", smtpUser.trim());
+                          localStorage.setItem("dopes_gmail_app_password", cleanPass);
+                          
+                          // Close the current modal and run transmission logic
+                          const activeBooking = emailStatusModal.booking;
+                          setEmailStatusModal(null);
+                          if (activeBooking) {
+                            // Run email send with newly saved configs
+                            await generateAndSendPDFReceipt(activeBooking);
+                          }
+                        }}
+                        className="w-full bg-blue-900 hover:bg-blue-950 text-white font-bold py-2 px-4 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 mt-2"
+                      >
+                        <Mail size={13} />
+                        <span>Save & Transmit Real Email Now</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Technical / warning detail expansion */}
+                {(emailStatusModal.warning || emailStatusModal.details) && (
+                  <div className="bg-neutral-900 text-neutral-300 p-3.5 rounded-xl font-mono text-[10px] space-y-1.5">
+                    <span className="text-rose-400 font-bold block uppercase text-[8px] tracking-wider">System Log & Troubleshooting Payload:</span>
+                    {emailStatusModal.warning && <p className="font-bold text-rose-350">Reason: {emailStatusModal.warning}</p>}
+                    {emailStatusModal.details && <p className="leading-relaxed whitespace-pre-wrap">Details: {emailStatusModal.details}</p>}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="bg-neutral-50 border-t px-6 py-4 flex justify-end shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setEmailStatusModal(null)}
+                  className="bg-neutral-200 hover:bg-neutral-300 text-neutral-800 font-extrabold px-5 py-2 rounded-xl text-xs transition cursor-pointer"
+                >
+                  Close Window
+                </button>
+              </div>
+
             </div>
           </div>
         )}
