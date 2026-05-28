@@ -220,14 +220,97 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
     setStep("emailConfirm");
     setIsSubmitting(false);
 
-    // Run Simulated email dispatch sequence matching Gmail trigger criteria
     setEmailProgress("connecting");
-    setTimeout(() => {
+    
+    // Structure formal email HTML payload
+    const depositDesc = depositChoice === "Full" 
+      ? `Full Deposit Upfront ($${house.price} USD)` 
+      : (depositChoice === "None" ? "No Upfront Deposit" : `Custom Deposit Offer ($${customDepositAmount} USD)`);
+
+    const agentFeeDetail = `$${headsCount * 20} USD`;
+    const totalSent = paymentMethod === "EcoCash" ? headsCount * 20 + 1 + finalDepositValue : headsCount * 20 + finalDepositValue;
+
+    const emailHtmlAndText = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #1d4ed8; text-transform: uppercase; font-size: 18px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; margin-top: 0;">Portal Booking Complete & Secure</h2>
+        <p>Dear <strong>${studentName}</strong>,</p>
+        <p>Your agent securing fee and deposit choice are registered. Your space is now held secure at <strong>${house.title}</strong> (${house.location}) on the Dopes Accommodation portal!</p>
+        
+        <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px;">
+          <tr style="background: #f8fafc;">
+            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Accommodation</td>
+            <td style="padding: 10px; border: 1px solid #e2e8f0;">${house.title} (${house.location})</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Rooms Reserved (Spots)</td>
+            <td style="padding: 10px; border: 1px solid #e2e8f0;">${headsCount} Student(s)</td>
+          </tr>
+          <tr style="background: #f8fafc;">
+            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Deposit Choice</td>
+            <td style="padding: 10px; border: 1px solid #e2e8f0; color: #047857; font-weight: bold;">${depositDesc}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Securing Agent Fee</td>
+            <td style="padding: 10px; border: 1px solid #e2e8f0;">${agentFeeDetail}</td>
+          </tr>
+          <tr style="background: #f8fafc;">
+            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Total Cash Value</td>
+            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; color: #1d4ed8;">$${totalSent} USD</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Securing Channel</td>
+            <td style="padding: 10px; border: 1px solid #e2e8f0;">${paymentMethod}</td>
+          </tr>
+          <tr style="background: #f8fafc;">
+            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Move-In Date</td>
+            <td style="padding: 10px; border: 1px solid #e2e8f0;">${targetMoveIn}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Payer Email</td>
+            <td style="padding: 10px; border: 1px solid #e2e8f0;">${studentEmail}</td>
+          </tr>
+        </table>
+        
+        <div style="background: #eff6ff; padding: 12px; border-radius: 8px; border: 1px solid #bfdbfe; font-size: 13px; color: #1e3a8a; margin-top: 15px;">
+          <strong>Wait For Verification:</strong> Panashe Dondo is inspecting your EcoCash transaction screenshot proof of payment. Once verified, you will receive an official portal lease document for check-in.
+        </div>
+        
+        <p style="font-size: 11px; color: #64748b; margin-top: 25px; text-align: center; border-t: 1px solid #f1f5f9; padding-top: 15px;">
+          Dopes Accommodation Agency • dopesaccommodationagency@gmail.com • Gweru, Zimbabwe.
+        </p>
+      </div>
+    `;
+
+    // Chain stages to make sure the user experiences a smooth, beautiful transition
+    setTimeout(async () => {
       setEmailProgress("sending");
-      setTimeout(() => {
-        setEmailProgress("sent");
-      }, 1500);
-    }, 1200);
+      try {
+        const payload = {
+          to: studentEmail,
+          subject: `DOPES Accommodation Secured: ${house.title}`,
+          html: emailHtmlAndText,
+          text: `Hello ${studentName}. Your securing fee and deposit details are successfully registered for ${house.title}.`,
+        };
+        
+        const response = await fetch("/api/send-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+        
+        const data = await response.json();
+        console.log("Email dispatch service response:", data);
+      } catch (error) {
+        console.error("Failed to make /api/send-email request:", error);
+      } finally {
+        // Wait a slight fraction for visual polish then resolve sending progress modal
+        setTimeout(() => {
+          setEmailProgress("sent");
+        }, 1200);
+      }
+    }, 1500);
   };
 
   const handleOpenWhatsApp = () => {
@@ -812,37 +895,19 @@ Please confirm my mail delivery receipt confirmation from dopesaccommodationagen
               
               {/* Dynamic dispatching progression animation */}
               <AnimatePresence mode="wait">
-                {emailProgress === "connecting" && (
+                {(emailProgress === "connecting" || emailProgress === "sending") && (
                   <motion.div
-                    key="connecting"
+                    key="loading"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0 }}
-                    className="py-8 space-y-3"
+                    className="py-12 space-y-4"
                   >
-                    <Loader2 size={40} className="animate-spin text-blue-600 mx-auto" />
+                    <Loader2 size={44} className="animate-spin text-blue-600 mx-auto" />
                     <div>
-                      <h4 className="font-bold text-sm text-neutral-800">Linking Dopes Mail Gateway</h4>
-                      <p className="text-xs text-neutral-500 mt-1 font-medium italic">
-                        Securing bridge connection to dopesaccommodationagency@gmail.com SMTP...
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-
-                {emailProgress === "sending" && (
-                  <motion.div
-                    key="sending"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="py-8 space-y-3"
-                  >
-                    <Loader2 size={40} className="animate-spin text-indigo-600 mx-auto" />
-                    <div>
-                      <h4 className="font-bold text-sm text-neutral-800 font-mono">Compiling Official Invoice PDF & Receipt</h4>
-                      <p className="text-xs text-indigo-700 font-bold mt-1">
-                        Dispatching securing confirmation to: {studentEmail}
+                      <h4 className="font-bold text-sm text-neutral-800">Processing Secure Booking</h4>
+                      <p className="text-xs text-neutral-500 mt-1 max-w-xs mx-auto font-medium leading-relaxed">
+                        We are securing your accommodation space, registering your details on our Midlands State University student portal, and preparing your confirmation email. Please stay on this screen...
                       </p>
                     </div>
                   </motion.div>

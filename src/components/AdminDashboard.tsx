@@ -1210,6 +1210,100 @@ export default function AdminDashboard({
                 </div>
               </div>
             </div>
+
+            {/* Deposits Paid and Details of the Payer section */}
+            <div className="bg-white border border-neutral-200 hover:border-blue-105 rounded-2xl p-5 shadow-xs space-y-4 transition-all">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
+                <div>
+                  <h3 className="font-bold text-neutral-800 text-sm flex items-center gap-1.5">
+                    <Coins className="text-emerald-600 animate-pulse" size={16} /> Paid Deposits & Payer Details Ledger
+                  </h3>
+                  <p className="text-[10px] text-neutral-400 mt-1">
+                    Direct ledger log tracking landlord deposit payment allocations and student payer information.
+                  </p>
+                </div>
+                <div className="bg-emerald-50 text-emerald-800 text-[10px] font-black tracking-wide uppercase px-2.5 py-1 rounded-lg shrink-0 w-fit">
+                  Total Deposits Paid: ${bookings
+                    .filter(b => b.completed && b.depositChoice && b.depositChoice !== "None")
+                    .reduce((sum, b) => sum + (b.customDepositAmount || 0), 0)} USD Included
+                </div>
+              </div>
+
+              {bookings.filter(b => b.depositChoice && b.depositChoice !== "None").length === 0 ? (
+                <div className="py-8 text-center text-neutral-400 text-xs font-semibold">
+                  No payer upfront deposits registered yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-neutral-500">
+                    <thead className="bg-neutral-50 text-neutral-700 font-extrabold uppercase tracking-wider border-b text-[9px]">
+                      <tr>
+                        <th className="p-3">Payer Contact Detail</th>
+                        <th className="p-3">Target House</th>
+                        <th className="p-3">Deposit Level (Upfront)</th>
+                        <th className="p-3 text-right">Proof screenshot / Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100 text-[11px]">
+                      {bookings
+                        .filter(b => b.depositChoice && b.depositChoice !== "None")
+                        .map((b) => {
+                          const isCompleted = !!b.completed;
+                          const depositAmtText = b.depositChoice === "Full" ? `Full Deposit Upfront (${b.customDepositAmount ? `$${b.customDepositAmount}` : "Room Price"} USD)` : `Custom Deposit Offer ($${b.customDepositAmount} USD)`;
+                          return (
+                            <tr key={b.id} className="hover:bg-neutral-50/50 transition-colors">
+                              <td className="p-3">
+                                <div className="font-bold text-neutral-800 text-xs">{b.studentName}</div>
+                                <div className="text-[10px] text-neutral-400 mt-0.5 space-y-0.5">
+                                  <div>✉️ {b.studentEmail || "No Email Address Provided"}</div>
+                                  <div>📞 {b.studentPhone}</div>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <span className="font-semibold text-neutral-700 bg-neutral-100 px-2 py-1 rounded-md text-[10px]">
+                                  {b.houseTitle}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <div className="font-bold text-emerald-700 flex flex-col">
+                                  <span>{depositAmtText}</span>
+                                  {b.paymentMethod && (
+                                    <span className="text-[9px] text-neutral-400 font-medium">Payment Mode: {b.paymentMethod}</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3 text-right">
+                                <div className="flex flex-col items-end gap-1.5 font-medium">
+                                  {isCompleted ? (
+                                    <span className="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded text-[9px] uppercase tracking-wider">
+                                      ✓ Verified Paid
+                                    </span>
+                                  ) : (
+                                    <span className="bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded text-[9px] uppercase tracking-wider">
+                                      ⏱ Pending Verify
+                                    </span>
+                                  )}
+                                  {b.proofOfPaymentBase64 && (
+                                    <button
+                                      onClick={() => {
+                                        setProofPreview(b.proofOfPaymentBase64!);
+                                        setPreviewBookingName(b.studentName);
+                                      }}
+                                      className="text-blue-600 hover:text-blue-700 text-[10px] font-bold underline flex items-center gap-1 cursor-pointer mt-1"
+                                    >
+                                      View Receipt Proof
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
