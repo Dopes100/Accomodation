@@ -16,7 +16,8 @@ import {
   deleteHouseFromFirestore, 
   submitBookingToFirestore, 
   deleteBookingFromFirestore, 
-  toggleBookingCompletedInFirestore 
+  toggleBookingCompletedInFirestore,
+  deleteAllBookingsFromFirestore
 } from "./firebaseUtils";
 // @ts-expect-error - Vite handles loading of png assets at compile-time
 import heroImage from "./assets/images/student_accommodation_hero_1779802930883.png";
@@ -107,6 +108,10 @@ export default function App() {
 
   const handleDeleteBooking = async (id: string) => {
     await deleteBookingFromFirestore(id);
+  };
+
+  const handleDeleteAllBookings = async () => {
+    await deleteAllBookingsFromFirestore();
   };
 
   const handleToggleBookingCompleted = async (id: string) => {
@@ -421,6 +426,7 @@ export default function App() {
           onEditHouse={handleEditHouse}
           onDeleteHouse={handleDeleteHouse}
           onDeleteBooking={handleDeleteBooking}
+          onDeleteAllBookings={handleDeleteAllBookings}
           onToggleBookingCompleted={handleToggleBookingCompleted}
           onClose={() => setIsAdminOpen(false)}
           onAddBooking={handleBookingSubmit}

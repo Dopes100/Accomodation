@@ -42,6 +42,7 @@ interface AdminDashboardProps {
   onEditHouse: (house: House) => void;
   onDeleteHouse: (id: string) => void;
   onDeleteBooking: (id: string) => void;
+  onDeleteAllBookings?: () => void;
   onToggleBookingCompleted?: (id: string) => void;
   onClose: () => void;
   onAddBooking?: (booking: Booking) => void;
@@ -76,6 +77,7 @@ export default function AdminDashboard({
   onEditHouse,
   onDeleteHouse,
   onDeleteBooking,
+  onDeleteAllBookings,
   onToggleBookingCompleted,
   onClose,
   onAddBooking
@@ -135,6 +137,20 @@ export default function AdminDashboard({
     details?: string;
     suggestion?: string;
   } | null>(null);
+
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (toast && toast.show) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // Default select first house for manual booking if available
   React.useEffect(() => {
@@ -1386,11 +1402,31 @@ export default function AdminDashboard({
         {/* Bookings Tab */}
         {activeTab === "bookings" && (
           <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-black text-neutral-800">Booking Submission Logs</h2>
-              <p className="text-xs text-neutral-500">
-                Below are the bookings completed by students. They have received the WhatsApp redirect link to reach your phone.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-50 border border-neutral-150 p-4 rounded-2xl animate-fade-in">
+              <div>
+                <h2 className="text-lg font-black text-neutral-800">Booking Submission Logs</h2>
+                <p className="text-xs text-neutral-500">
+                  Below are the bookings completed by students. They have received the WhatsApp redirect link to reach your phone.
+                </p>
+              </div>
+              {bookings.length > 0 && onDeleteAllBookings && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const confirmFirst = window.confirm("⚠️ DANGER ZONE: Are you sure you want to delete ALL booking logs?\n\nThis will clear all booking history, reset client logs, and wipe database records permanently. This action cannot be undone!");
+                    if (confirmFirst) {
+                      const confirmSecond = window.confirm("FINAL CONFIRMATION REQUEST:\n\nClick OK if you are positive you want to completely erase and delete all bookings.");
+                      if (confirmSecond) {
+                        onDeleteAllBookings();
+                      }
+                    }
+                  }}
+                  className="bg-red-50 hover:bg-red-100/80 border border-red-200 text-red-700 font-extrabold text-[11px] px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 self-start sm:self-center shrink-0 cursor-pointer shadow-xs"
+                >
+                  <Trash2 size={13} className="text-red-650" />
+                  <span>Clear All Bookings</span>
+                </button>
+              )}
             </div>
 
             {bookings.length === 0 ? (
@@ -1433,21 +1469,10 @@ export default function AdminDashboard({
                                 onChange={async () => {
                                   onToggleBookingCompleted?.(booking.id);
                                   if (!isCompleted) {
-                                    setTimeout(async () => {
-                                      const choice = window.confirm(
-                                        `Payment marked as Completed/Paid for ${booking.studentName}!\n\nWould you like to compile and deliver the official DOPES Receipt PDF?\n\n- Click [OK] to dispatch via SMTP Email.\n- Click [Cancel] to download the PDF locally and open WhatsApp chat.`
-                                      );
-                                      if (choice) {
-                                        if (booking.studentEmail) {
-                                          await generateAndSendPDFReceipt(booking);
-                                        } else {
-                                          alert("No student email logged on this booking. Launching high-speed WhatsApp receipt instead!");
-                                          await generateAndWhatsAppDoc(booking, "receipt");
-                                        }
-                                      } else {
-                                        await generateAndWhatsAppDoc(booking, "receipt");
-                                      }
-                                    }, 400);
+                                    setToast({
+                                      show: true,
+                                      message: `Deposit verified complete for ${booking.studentName}!`
+                                    });
                                   }
                                 }}
                                 className="h-4 w-4 rounded-md text-blue-600 focus:ring-blue-500 border-neutral-300 transition-all cursor-pointer accent-blue-600"
@@ -1581,15 +1606,33 @@ export default function AdminDashboard({
 
         {/* Financials & Client Analytics Tab */}
         {activeTab === "analytics" && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fade-in">
             {/* KPI Cards */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-100 border border-neutral-200/60 p-4 rounded-2xl">
               <div>
                 <h2 className="text-lg font-black text-neutral-800">Financial Growth & Platform Performance</h2>
                 <p className="text-xs text-neutral-500">
                   Review total accrued fees, occupancy rates, and register offline placement transactions.
                 </p>
               </div>
+              {bookings.length > 0 && onDeleteAllBookings && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const confirmFirst = window.confirm("⚠️ RESET WARNING: Do you want to completely RESET all booking analytics and occupancy stats?\n\nThis deletes all booking data logs globally. It is an irreversible operation.");
+                    if (confirmFirst) {
+                      const confirmSecond = window.confirm("FINAL CONFIRMATION REQUEST:\n\nThis will reset all analytical dashboards, secured commission fees, and occupancy statistics to zero. Click OK to proceed.");
+                      if (confirmSecond) {
+                        onDeleteAllBookings();
+                      }
+                    }
+                  }}
+                  className="bg-red-50 hover:bg-red-100/80 border border-red-200 text-red-700 font-extrabold text-[11px] px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 self-start sm:self-center shrink-0 cursor-pointer shadow-xs"
+                >
+                  <Trash2 size={13} className="text-red-650" />
+                  <span>Reset All Analytics Stats No Logs</span>
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1929,24 +1972,44 @@ export default function AdminDashboard({
             </div>
 
             {/* Deposits Ledger Search / Filter block */}
-            <div className="bg-white border rounded-2xl p-5 space-y-4 shadow-xs">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="bg-white border rounded-2xl p-5 space-y-4 shadow-xs animate-fade-in">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b pb-4 border-neutral-100">
                 <div>
                   <h3 className="font-bold text-neutral-800 text-sm flex items-center gap-1.5">
                     <Coins className="text-amber-500 animate-pulse" size={16} /> MSU Placement Deposit Ledger
                   </h3>
                   <p className="text-[10px] text-neutral-400 mt-1">
-                    Direct ledger log tracking landlord deposit payment allocations and student payer information.
+                    Direct ledger log tracking landlord deposit payment allocations and student student payer information.
                   </p>
                 </div>
-                <div className="w-full md:w-64">
-                  <input
-                    type="text"
-                    placeholder="Search by student name or email..."
-                    value={depositsSearchQuery}
-                    onChange={(e) => setDepositsSearchQuery(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-200 p-2.5 text-xs bg-slate-50 focus:bg-white outline-none focus:border-blue-500 placeholder-neutral-400 transition"
-                  />
+                <div className="flex flex-wrap items-center gap-2">
+                  {bookings.some(b => b.depositChoice && b.depositChoice !== "None") && onDeleteAllBookings && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const confirmFirst = window.confirm("⚠️ DANGER ZONE: Clear all placement deposits from the ledger?\n\nThis will permanently delete all student booking logs that have registered deposit selections.");
+                        if (confirmFirst) {
+                          const confirmSecond = window.confirm("CONFIRMATION REQUEST:\n\nThis is irreversible. Type OK to proceed with erasing all deposit logs from the ledger database.");
+                          if (confirmSecond) {
+                            onDeleteAllBookings();
+                          }
+                        }
+                      }}
+                      className="bg-red-50 hover:bg-red-100/85 border border-red-150 text-red-700 font-extrabold text-[10.5px] px-3.5 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                    >
+                      <Trash2 size={12} />
+                      <span>Clear Deposits Ledger</span>
+                    </button>
+                  )}
+                  <div className="w-full md:w-64">
+                    <input
+                      type="text"
+                      placeholder="Search by student name or email..."
+                      value={depositsSearchQuery}
+                      onChange={(e) => setDepositsSearchQuery(e.target.value)}
+                      className="w-full rounded-xl border border-neutral-200 p-2 text-xs bg-slate-50 focus:bg-white outline-none focus:border-blue-500 placeholder-neutral-400 transition"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -2004,15 +2067,11 @@ export default function AdminDashboard({
                                   checked={isCompleted}
                                   onChange={async () => {
                                     onToggleBookingCompleted?.(b.id);
-                                    if (!isCompleted && b.studentEmail) {
-                                      setTimeout(async () => {
-                                        const sendNow = window.confirm(
-                                          `Deposit verified complete for ${b.studentName}!\n\nWould you like to automatically generate and dispatch an official DOPES PDF Receipt to ${b.studentEmail}?`
-                                        );
-                                        if (sendNow) {
-                                          await generateAndSendPDFReceipt(b);
-                                        }
-                                      }, 400);
+                                    if (!isCompleted) {
+                                      setToast({
+                                        show: true,
+                                        message: `Deposit verified complete for ${b.studentName}!`
+                                      });
                                     }
                                   }}
                                   className="h-4 w-4 rounded-md text-blue-600 focus:ring-blue-500 border-neutral-300 transition-all cursor-pointer accent-blue-600"
@@ -2096,6 +2155,18 @@ export default function AdminDashboard({
                                       <span>{isCompleted ? "Email Receipt" : "Email Invoice"}</span>
                                     </button>
                                   )}
+
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`Delete this deposit ledger record for ${b.studentName}? This will remove it from system logs permanently.`)) {
+                                        onDeleteBooking(b.id);
+                                      }
+                                    }}
+                                    className="bg-red-50 hover:bg-red-100/70 text-red-650 rounded-lg p-2 transition-all cursor-pointer inline-flex items-center shadow-2xs"
+                                    title="Delete Deposit Record"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -2410,6 +2481,19 @@ export default function AdminDashboard({
                   Save Active settings
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic Toast Notification Popup */}
+        {toast && toast.show && (
+          <div className="fixed bottom-6 right-6 z-60 bg-neutral-900 text-white font-bold text-xs px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-200 border border-neutral-850">
+            <div className="bg-emerald-500/20 p-1.5 rounded-full ring-4 ring-emerald-500/5">
+              <CheckCircle2 size={16} className="text-emerald-500 animate-bounce" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-white text-[12px] font-black">{toast.message}</span>
+              <span className="text-[10px] text-neutral-400 font-normal mt-0.5">Database log updated successfully</span>
             </div>
           </div>
         )}

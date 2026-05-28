@@ -223,3 +223,23 @@ export async function toggleBookingCompletedInFirestore(booking: Booking) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
+
+/**
+ * Deletes all bookings from Firestore.
+ */
+export async function deleteAllBookingsFromFirestore() {
+  const path = "bookings";
+  try {
+    const querySnapshot = await getDocs(collection(db, "bookings"));
+    if (querySnapshot.empty) return;
+    
+    const batch = writeBatch(db);
+    querySnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
