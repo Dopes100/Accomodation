@@ -143,6 +143,8 @@ export default function AdminDashboard({
     message: string;
   } | null>(null);
 
+  const [autoCloseSeconds, setAutoCloseSeconds] = useState<number | null>(null);
+
   React.useEffect(() => {
     if (toast && toast.show) {
       const timer = setTimeout(() => {
@@ -151,6 +153,26 @@ export default function AdminDashboard({
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  // Auto-close successful email status modales after 4 seconds with real-time countdown decrement
+  React.useEffect(() => {
+    if (emailStatusModal && emailStatusModal.show && emailStatusModal.success) {
+      setAutoCloseSeconds(4);
+      const interval = setInterval(() => {
+        setAutoCloseSeconds((prev) => {
+          if (prev === null || prev <= 1) {
+            clearInterval(interval);
+            setEmailStatusModal(null);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setAutoCloseSeconds(null);
+    }
+  }, [emailStatusModal]);
 
   // Default select first house for manual booking if available
   React.useEffect(() => {
@@ -172,6 +194,11 @@ export default function AdminDashboard({
   const generateAndSendPDFReceipt = async (booking: Booking) => {
     try {
       setSendingPdfId(booking.id);
+      
+      const associatedHouse = houses.find(h => h.id === booking.houseId);
+      const monthlyRent = associatedHouse ? associatedHouse.price : 110;
+      const prepaidDeposit = booking.customDepositAmount || 0;
+      const balanceToPay = Math.max(0, monthlyRent - prepaidDeposit);
       
       const doc = new jsPDF();
       
@@ -332,7 +359,7 @@ export default function AdminDashboard({
       
       // Rules and Terms Info Box at bottom of PDF
       doc.setFillColor(239, 246, 255);
-      doc.rect(15, 188, 180, 24, "F");
+      doc.rect(15, 188, 180, 28, "F");
       
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
@@ -344,6 +371,7 @@ export default function AdminDashboard({
       doc.text("1. This verified receipt authorizes the tenant student to enter and occupy target premises listed above.", 18, 197);
       doc.text(`2. Target move-in is expected on or after ${booking.targetMoveIn}. Landlord is required to retain this receipt.`, 18, 201);
       doc.text("3. High speed borehole, Wi-Fi, and solar backup access details are provided directly to student upon arrival.", 18, 205);
+      doc.text(`4. Deposit paid ($${prepaidDeposit}) is a prepayment of rent ($${monthlyRent}/mo). Balance of $${balanceToPay} is settled upon check-in.`, 18, 209);
       
       // Signatures
       doc.setFont("helvetica", "bold");
@@ -392,10 +420,27 @@ export default function AdminDashboard({
             </p>
             
             <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; margin: 25px 0;">
-              <strong style="color: #166534; display: block; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; font-weight: 800; tracking-wide: 0.5px;">Move-In Clearance Issued</strong>
-              <p style="margin: 0; font-size: 12px; color: #166534; line-height: 1.5;">
-                Target Move-In Date: <strong>${booking.targetMoveIn}</strong><br />
-                Security deposit choice: <strong>${booking.depositChoice === "Full" ? "Settle in Full" : (booking.depositChoice === "None" ? "Pay Landlord on Move-in" : `Partial $${booking.customDepositAmount} Paid`)}</strong>
+              <strong style="color: #166534; display: block; margin-bottom: 8px; text-transform: uppercase; font-size: 11px; font-weight: 800; tracking-wide: 0.5px;">Move-In Clearance & Rent Balance Details</strong>
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #166534; line-height: 1.6;">
+                <tr>
+                  <td style="padding: 2px 0;">Target Move-In Date:</td>
+                  <td style="text-align: right; font-weight: 700;">${booking.targetMoveIn}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 2px 0;">Monthly Room Rent:</td>
+                  <td style="text-align: right; font-weight: 700;">$${monthlyRent} USD</td>
+                </tr>
+                <tr>
+                  <td style="padding: 2px 0;">Upfront Deposit Paid (Part of Rent):</td>
+                  <td style="text-align: right; font-weight: 700;">$${prepaidDeposit} USD</td>
+                </tr>
+                <tr style="border-top: 1px dashed #bbf7d0;">
+                  <td style="padding: 6px 0 2px 0; font-weight: 800;">Rent Balance Due On Move-In:</td>
+                  <td style="padding: 6px 0 2px 0; text-align: right; font-weight: 800; font-size: 14px; color: #15803d;">$${balanceToPay} USD</td>
+                </tr>
+              </table>
+              <p style="margin: 8px 0 0 0; font-size: 11px; color: #166534; font-style: italic; line-height: 1.4;">
+                * Note: Your paid deposit of $${prepaidDeposit} USD is a direct prepayment towards your first month's rent. You only pay the balance of $${balanceToPay} USD directly to the landlord upon arrival.
               </p>
             </div>
             
@@ -405,7 +450,8 @@ export default function AdminDashboard({
             
             <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; font-size: 12px; color: #64748b; text-align: center; margin-top: 30px;">
               <p style="margin: 0; font-weight: 700; color: #334155;">Dopes Accommodation Agency</p>
-              <p style="margin: 3px 0 0 0;">dopesaccommodationagency@gmail.com • +263 78 073 6072</p>
+              <p style="margin: 3px 0 0 0;">dopesaccommodationagency@gmail.com</p>
+              <p style="margin: 2px 0 0 0; font-weight: 600; color: #16a34a;">WhatsApp: +263 78 073 6072</p>
             </div>
           </div>
         </div>
@@ -496,6 +542,11 @@ export default function AdminDashboard({
 
   const generateAndWhatsAppDoc = async (booking: Booking, type: "invoice" | "receipt") => {
     try {
+      const associatedHouse = houses.find(h => h.id === booking.houseId);
+      const monthlyRent = associatedHouse ? associatedHouse.price : 110;
+      const prepaidDeposit = booking.customDepositAmount || 0;
+      const balanceToPay = Math.max(0, monthlyRent - prepaidDeposit);
+
       const doc = new jsPDF();
       
       // Draw background decorations
@@ -674,7 +725,7 @@ export default function AdminDashboard({
       
       // Rules and Terms Info Box at bottom of PDF
       doc.setFillColor(239, 246, 255);
-      doc.rect(15, 188, 180, 24, "F");
+      doc.rect(15, 188, 180, 28, "F");
       
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
@@ -686,6 +737,7 @@ export default function AdminDashboard({
       doc.text("1. This verified document authorizes the tenant student to enter and occupy target premises listed above.", 18, 197);
       doc.text(`2. Target move-in is expected on or after ${booking.targetMoveIn}. Landlord is required to retain this document.`, 18, 201);
       doc.text("3. High speed borehole, Wi-Fi, and solar backup access details are provided directly to student upon arrival.", 18, 205);
+      doc.text(`4. Deposit paid ($${prepaidDeposit}) is a prepayment of rent ($${monthlyRent}/mo). Balance of $${balanceToPay} is settled upon check-in.`, 18, 209);
       
       // Signatures
       doc.setFont("helvetica", "bold");
@@ -728,11 +780,14 @@ export default function AdminDashboard({
         `Hello *${booking.studentName}*,\n\n` +
         `We have compiled and downloaded your official *${statusTitle}* [Code: ${booking.id.toUpperCase()}] for your accommodation reservation at:\n` +
         `👉 *${booking.houseTitle}*\n\n` +
-        `• *Details*:\n` +
-        `  - Securing Fee: $${booking.headsCount * 20} USD (${booking.headsCount} slot)\n` +
-        `  - Landlord Deposit: $${depositAmt} Choice\n` +
-        `  - Total Payment: *$${grandTotal} USD*\n` +
+        `• *Rent & Balance Details*:\n` +
+        `  - Monthly House Rent: $${monthlyRent} USD\n` +
+        `  - Deposit Prepayment: $${prepaidDeposit} USD\n` +
+        `  - Rent Balance Due on Move-In: *$${balanceToPay} USD*\n` +
+        `  - Securing Commision Fee: $${booking.headsCount * 20} USD\n` +
+        `  - Grand Total Sent: $${grandTotal} USD\n` +
         `  - Target Move-In: ${booking.targetMoveIn}\n\n` +
+        `*Our Deposit Policy*: Your paid upfront deposit of $${prepaidDeposit} USD acts as a direct prepayment of rent. Upon check-in, you will only pay the landlord the remaining balance of *$${balanceToPay} USD*.\n\n` +
         `*The formal DOPES PDF Document has been compiled and downloaded to this device.* Please attach the downloaded file \`${filename}\` in this chat!\n\n` +
         `Welcome to your student housing! Let us know if you require any logistics coordinate.`;
         
@@ -2336,13 +2391,21 @@ export default function AdminDashboard({
               </div>
 
               {/* Modal Footer */}
-              <div className="bg-neutral-50 border-t px-6 py-4 flex justify-end shrink-0">
+              <div className="bg-neutral-50 border-t px-6 py-4 flex justify-between items-center shrink-0">
+                <div>
+                  {autoCloseSeconds !== null && (
+                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1.5 animate-pulse">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                      Auto-closing in {autoCloseSeconds}s...
+                    </span>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => setEmailStatusModal(null)}
                   className="bg-neutral-200 hover:bg-neutral-300 text-neutral-800 font-extrabold px-5 py-2 rounded-xl text-xs transition cursor-pointer"
                 >
-                  Close Window
+                  Close Window {autoCloseSeconds !== null ? `(${autoCloseSeconds}s)` : ""}
                 </button>
               </div>
 

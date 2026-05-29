@@ -322,7 +322,8 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
           <!-- Signature details -->
             <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; font-size: 12px; color: #64748b; line-height: 1.5; text-align: center;">
             <p style="margin: 0; font-weight: 700; color: #334155;">Dopes Accommodation Agency Gweru Bureau</p>
-            <p style="margin: 3px 0 0 0;">dopesaccommodationagency@gmail.com • +263 78 073 6072</p>
+            <p style="margin: 3px 0 0 0;">dopesaccommodationagency@gmail.com</p>
+            <p style="margin: 2px 0 0 0; font-weight: 600; color: #16a34a;">WhatsApp: +263 78 073 6072</p>
             <p style="margin: 5px 0 0 0; font-size: 11px; color: #94a3b8;">This is a system generated digital securing invoice holding reservation spaces.</p>
             <p style="margin: 5px 0 0 0; font-size: 10px; color: #94a3b8; font-style: italic;">Not affiliated with Midlands State University (MSU) but helping you secure quality student accommodation close to campus safely and easily.</p>
           </div>
@@ -736,6 +737,15 @@ Please confirm my mail delivery receipt confirmation from dopesaccommodationagen
                     {depositChoice === "Full" ? `$${house.price} USD` : depositChoice === "None" ? "No Upfront Deposit" : `$${customDepositAmount} USD`}
                   </span>
                 </div>
+                <div className="flex justify-between text-xs font-semibold text-slate-700 bg-slate-100/80 px-2 py-1.5 rounded-lg border border-slate-200/50 my-1">
+                  <span>🔑 Rent Balance Due on Move-In</span>
+                  <span className="font-bold text-blue-850">
+                    ${Math.max(0, house.price - (depositChoice === "Full" ? house.price : depositChoice === "None" ? 0 : customDepositAmount))} USD
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 italic leading-snug">
+                  * Live Balance: Your paid deposit is a direct prepayment of your rent. (e.g. if monthly rent is ${house.price} USD and you pay an upfront deposit of ${depositChoice === "Full" ? house.price : depositChoice === "None" ? 0 : customDepositAmount} USD, you only pay the remaining balance of ${Math.max(0, house.price - (depositChoice === "Full" ? house.price : depositChoice === "None" ? 0 : customDepositAmount))} USD to the landlord upon arrival).
+                </p>
                 <div className="flex justify-between text-xs text-slate-600 items-center">
                   <span>Securing Agent Fee ({headsCount} Head{headsCount > 1 ? "s" : ""})</span>
                   <span className="font-semibold text-slate-800">${baseAgentFee} USD</span>

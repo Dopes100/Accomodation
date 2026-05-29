@@ -472,6 +472,9 @@ export default function App() {
                 <p className="flex items-center gap-1.5 font-bold text-emerald-400">
                   💬 WhatsApp: <a href="https://api.whatsapp.com/send?phone=263780736072" className="underline hover:text-white" target="_blank" rel="noreferrer">+263 780 736 072</a>
                 </p>
+                <p className="flex items-center gap-1.5 font-bold text-sky-400">
+                  📧 Email: <a href="mailto:dopesaccommodationagency@gmail.com" className="underline text-blue-200 hover:text-white">dopesaccommodationagency@gmail.com</a>
+                </p>
                 <div className="pt-2">
                   <span className="bg-white/10 select-none text-[10px] uppercase font-bold text-blue-100 px-2 py-1 rounded">
                     SECURED OFF-CAMPUS REZ HOUSING
