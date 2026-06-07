@@ -15,5 +15,10 @@ service cloud.firestore {
     match /bookings/{bookingId} {
       allow read, write: if true;
     }
+
+    // Settings collection (e.g. for dynamic global SMTP credentials)
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
   }
 }

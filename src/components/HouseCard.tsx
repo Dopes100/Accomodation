@@ -80,10 +80,17 @@ export default function HouseCard({ house, onBookNow }: HouseCardProps) {
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-neutral-950/70 to-transparent" />
 
         {/* Price Tag */}
-        <div className="absolute top-4 left-4 bg-white px-3.5 py-1.5 rounded-xl shadow-lg border border-neutral-100 flex items-center">
-          <span className="text-xs font-title font-bold text-neutral-500 uppercase mr-1">USD</span>
-          <span className="text-lg font-black text-blue-700 font-sans tracking-tight">${house.price}</span>
-          <span className="text-[10px] text-neutral-400 font-semibold ml-1">/ mo</span>
+        <div className="absolute top-4 left-4 bg-white px-3.5 py-1.5 rounded-xl shadow-lg border border-neutral-100 flex items-center gap-0.5">
+          {house.roomOptions && house.roomOptions.length > 0 && (
+            <span className="text-[9px] font-black text-neutral-400 uppercase tracking-tight">From</span>
+          )}
+          <span className="text-xs font-title font-bold text-neutral-500 uppercase">USD</span>
+          <span className="text-lg font-black text-blue-700 font-sans tracking-tight">
+            {house.roomOptions && house.roomOptions.length > 0 
+              ? Math.min(...house.roomOptions.map(o => o.price)) 
+              : house.price}
+          </span>
+          <span className="text-[10px] text-neutral-400 font-semibold">/mo</span>
         </div>
 
         {/* Gender Requirement Badge */}
@@ -130,9 +137,16 @@ export default function HouseCard({ house, onBookNow }: HouseCardProps) {
       {/* Content Body */}
       <div className="p-5 flex-1 flex flex-col space-y-3.5">
         <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-xs text-neutral-400 font-semibold uppercase tracking-wider">
-            <MapPin size={12} className="text-blue-500" />
-            <span>{house.location}</span>
+          <div className="flex items-center justify-between gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs text-neutral-400 font-semibold uppercase tracking-wider">
+              <MapPin size={12} className="text-blue-500" />
+              <span>{house.location}</span>
+            </div>
+            {house.roomOptions && house.roomOptions.length > 0 && (
+              <span className="bg-blue-50 text-blue-700 border border-blue-100 rounded-sm px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide">
+                ⚡ Flexible Rooms
+              </span>
+            )}
           </div>
 
           <h3 className="font-sans font-bold text-lg text-neutral-900 leading-tight tracking-tight group-hover:text-blue-600 transition-colors">
@@ -176,6 +190,37 @@ export default function HouseCard({ house, onBookNow }: HouseCardProps) {
             </span>
           ))}
         </div>
+
+        {/* Room configuration variations */}
+        {house.roomOptions && house.roomOptions.length > 0 && (
+          <div className="bg-slate-50/60 rounded-xl p-3 border border-slate-100 space-y-1.5 text-[11px]">
+            <p className="font-extrabold text-[10px] text-neutral-500 uppercase tracking-wider flex items-center gap-1 font-sans">
+              Available Rooms
+            </p>
+            <div className="grid grid-cols-1 gap-1.5">
+              {house.roomOptions.map((opt) => (
+                <div key={opt.id} className="flex justify-between items-center text-neutral-700 bg-white border border-neutral-200/50 rounded-lg p-2 shadow-xs font-sans">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-neutral-800 text-[10.5px] leading-tight flex items-center gap-1 flex-wrap font-sans">
+                      {opt.name}
+                      {opt.ensuite && (
+                        <span className="bg-emerald-50 text-emerald-600 font-extrabold text-[8px] uppercase tracking-wide px-1 py-0.2 border border-emerald-100 rounded-sm leading-none font-sans">
+                          Ensuite
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[9.5px] text-neutral-400 font-semibold font-sans mt-0.5">
+                      {opt.availableSlots} of {opt.maxSlots} spaces free
+                    </span>
+                  </div>
+                  <span className="font-black text-blue-700 font-sans text-xs bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/30">
+                    ${opt.price}<span className="text-[8px] font-normal text-neutral-400 font-sans">/mo</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Toggle distance visualizer */}
         <div className="pt-2 border-t border-neutral-100">

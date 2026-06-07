@@ -5,7 +5,8 @@
 
 import React, { useState } from "react";
 import { jsPDF } from "jspdf";
-import { House, Booking } from "../types";
+import { House, Booking, RoomOption } from "../types";
+import { getSMTPSettingsFromFirestore, saveSMTPSettingsToFirestore } from "../firebaseUtils";
 import { 
   Lock, 
   Plus, 
@@ -94,6 +95,8 @@ export default function AdminDashboard({
   const [smtpUser, setSmtpUser] = useState(() => localStorage.getItem("dopes_gmail_user") || "dopesaccommodationagency@gmail.com");
   const [smtpPass, setSmtpPass] = useState(() => localStorage.getItem("dopes_gmail_app_password") || "");
   const [showSmtpSettings, setShowSmtpSettings] = useState(false);
+  const [isTestingSmtp, setIsTestingSmtp] = useState(false);
+  const [smtpTestResult, setSmtpTestResult] = useState<{ success: boolean; message: string; warning?: string; suggestion?: string } | null>(null);
   
   // Manual offline booking state
   const [manualStudentName, setManualStudentName] = useState("");
@@ -121,6 +124,7 @@ export default function AdminDashboard({
   const [imageUrls, setImageUrls] = useState<string[]>([""]);
   const [availableSlots, setAvailableSlots] = useState<number>(6);
   const [maxSlots, setMaxSlots] = useState<number>(12);
+  const [roomOptions, setRoomOptions] = useState<RoomOption[]>([]);
   
   const [showAddForm, setShowAddForm] = useState(false);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
@@ -174,6 +178,28 @@ export default function AdminDashboard({
     }
   }, [emailStatusModal]);
 
+  // Load dynamic SMTP settings from Firestore if available
+  React.useEffect(() => {
+    async function loadSmtp() {
+      try {
+        const settings = await getSMTPSettingsFromFirestore();
+        if (settings) {
+          if (settings.smtpUser) {
+            setSmtpUser(settings.smtpUser);
+            localStorage.setItem("dopes_gmail_user", settings.smtpUser);
+          }
+          if (settings.smtpPass) {
+            setSmtpPass(settings.smtpPass);
+            localStorage.setItem("dopes_gmail_app_password", settings.smtpPass);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load SMTP settings from Firestore on mount:", err);
+      }
+    }
+    loadSmtp();
+  }, []);
+
   // Default select first house for manual booking if available
   React.useEffect(() => {
     if (houses.length > 0 && !manualHouseId) {
@@ -196,7 +222,7 @@ export default function AdminDashboard({
       setSendingPdfId(booking.id);
       
       const associatedHouse = houses.find(h => h.id === booking.houseId);
-      const monthlyRent = associatedHouse ? associatedHouse.price : 110;
+      const monthlyRent = booking.roomOptionPrice !== undefined ? booking.roomOptionPrice : (associatedHouse ? associatedHouse.price : 110);
       const prepaidDeposit = booking.customDepositAmount || 0;
       const balanceToPay = Math.max(0, monthlyRent - prepaidDeposit);
       
@@ -323,7 +349,8 @@ export default function AdminDashboard({
       
       // Item 2: Upfront Deposit Choice
       const depositAmt = booking.customDepositAmount || 0;
-      doc.text("Landlord Accommodation Deposit Placement", 18, 143);
+      const roomSpec = booking.roomOptionName ? ` (${booking.roomOptionName})` : "";
+      doc.text(`Landlord Accommodation Deposit Placement${roomSpec}`, 18, 143);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(100, 116, 139);
@@ -543,7 +570,7 @@ export default function AdminDashboard({
   const generateAndWhatsAppDoc = async (booking: Booking, type: "invoice" | "receipt") => {
     try {
       const associatedHouse = houses.find(h => h.id === booking.houseId);
-      const monthlyRent = associatedHouse ? associatedHouse.price : 110;
+      const monthlyRent = booking.roomOptionPrice !== undefined ? booking.roomOptionPrice : (associatedHouse ? associatedHouse.price : 110);
       const prepaidDeposit = booking.customDepositAmount || 0;
       const balanceToPay = Math.max(0, monthlyRent - prepaidDeposit);
 
@@ -689,7 +716,8 @@ export default function AdminDashboard({
       
       // Item 2: Upfront Deposit Choice
       const depositAmt = booking.customDepositAmount || 0;
-      doc.text("Landlord Accommodation Deposit Placement", 18, 143);
+      const roomSpec = booking.roomOptionName ? ` (${booking.roomOptionName})` : "";
+      doc.text(`Landlord Accommodation Deposit Placement${roomSpec}`, 18, 143);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(100, 116, 139);
@@ -823,6 +851,7 @@ export default function AdminDashboard({
     setImageUrls([""]);
     setAvailableSlots(6);
     setMaxSlots(12);
+    setRoomOptions([]);
     setShowAddForm(false);
   };
 
@@ -841,6 +870,7 @@ export default function AdminDashboard({
     setImageUrls(house.images && house.images.length > 0 ? [...house.images] : [""]);
     setAvailableSlots(house.availableSlots);
     setMaxSlots(house.maxSlots);
+    setRoomOptions(house.roomOptions && house.roomOptions.length > 0 ? JSON.parse(JSON.stringify(house.roomOptions)) : []);
     setShowAddForm(true); // Re-use add form panel
   };
 
@@ -872,7 +902,8 @@ export default function AdminDashboard({
       images: cleanUrls,
       availableSlots: Number(availableSlots),
       maxSlots: Number(maxSlots),
-      isAvailable: Number(availableSlots) > 0
+      isAvailable: Number(availableSlots) > 0,
+      roomOptions: roomOptions.length > 0 ? roomOptions : []
     };
 
     if (editingHouseId) {
@@ -1423,6 +1454,193 @@ export default function AdminDashboard({
                         >
                           <Plus size={11} /> Add Another Picture Field ({imageUrls.length}/10)
                         </button>
+                      )}
+                    </div>
+
+                    {/* Room Options Configurator */}
+                    <div className="p-3.5 bg-neutral-50 rounded-xl space-y-3.5 border border-neutral-100">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <span className="font-extrabold text-neutral-700 block uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                          📂 Room Sharing & Ensuite Variations
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextId = "opt-" + Date.now();
+                            setRoomOptions([
+                              ...roomOptions,
+                              {
+                                id: nextId,
+                                name: `${roomOptions.length + 1}-People Sharing (Standard Bathroom)`,
+                                sharingCount: Math.min(3, roomOptions.length + 1),
+                                ensuite: false,
+                                price: Number(price) || 85,
+                                availableSlots: 2,
+                                maxSlots: 2
+                              }
+                            ]);
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-extrabold uppercase px-2 py-1 rounded-md flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Plus size={10} /> Add Variation
+                        </button>
+                      </div>
+
+                      {roomOptions.length === 0 ? (
+                         <div className="p-2.5 bg-amber-50 border border-amber-100/50 rounded-lg text-amber-800 text-[10px] leading-relaxed">
+                           <p className="font-bold mb-0.5">💡 No specific room options defined.</p>
+                           <p className="text-neutral-500 font-medium font-sans text-[9px]">
+                             This house will treat slots as single uniform values using the flat-rate <strong>Price per Head (${price}/mo)</strong>. Add room variations if you want to support distinct types on the same property (e.g., 2-people sharing, single room ensuite with private bathrooms, etc.).
+                           </p>
+                         </div>
+                      ) : (
+                        <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                          {roomOptions.map((opt, optIdx) => (
+                            <div key={opt.id} className="bg-white border border-neutral-200/80 rounded-xl p-3 relative space-y-2.5 shadow-xs">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRoomOptions(roomOptions.filter(o => o.id !== opt.id));
+                                }}
+                                className="absolute top-2.5 right-2 text-rose-500 hover:bg-rose-50 p-1 rounded-lg cursor-pointer transition-colors"
+                                title="Delete Room Variation"
+                              >
+                                <X size={12} />
+                              </button>
+
+                              {/* Label & Sharing count */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-neutral-500 font-black mb-0.5 text-[8px] uppercase tracking-wide">Room Description / Label</label>
+                                  <input
+                                    type="text"
+                                    required
+                                    value={opt.name}
+                                    onChange={(e) => {
+                                      const updated = [...roomOptions];
+                                      updated[optIdx].name = e.target.value;
+                                      setRoomOptions(updated);
+                                    }}
+                                    className="w-full rounded-md border border-neutral-200 p-1 text-[11px] bg-neutral-50/50 focus:border-blue-500 font-sans"
+                                    placeholder="e.g. Single Room (Ensuite Private)"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-neutral-500 font-black mb-0.5 text-[8px] uppercase tracking-wide">Sharing Count</label>
+                                  <select
+                                    value={opt.sharingCount}
+                                    onChange={(e) => {
+                                      const updated = [...roomOptions];
+                                      const count = Number(e.target.value);
+                                      updated[optIdx].sharingCount = count;
+                                      // Auto formulate typical student description
+                                      const ensuiteStr = opt.ensuite ? "Ensuite Private Bathroom" : "Standard Bathroom";
+                                      updated[optIdx].name = count === 1 ? `Single Room (${ensuiteStr})` : `${count}-People Sharing (${ensuiteStr})`;
+                                      setRoomOptions(updated);
+                                    }}
+                                    className="w-full rounded-md border border-neutral-200 p-1 bg-white text-[11px] focus:border-blue-500 font-sans"
+                                  >
+                                    <option value={1}>1 Student (Single Private)</option>
+                                    <option value={2}>2 Students Sharing</option>
+                                    <option value={3}>3 Students Sharing</option>
+                                    <option value={4}>4 Students Sharing</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Ensuite bathroom status, rate/price, slots available vs maximum */}
+                              <div className="grid grid-cols-4 gap-1.5 items-end">
+                                <div>
+                                  <label className="block text-neutral-400 font-bold mb-0.5 text-[8px] uppercase tracking-wide">Bathroom</label>
+                                  <select
+                                    value={opt.ensuite ? "yes" : "no"}
+                                    onChange={(e) => {
+                                      const updated = [...roomOptions];
+                                      const ens = e.target.value === "yes";
+                                      updated[optIdx].ensuite = ens;
+                                      const ensuiteStr = ens ? "Ensuite Private Bathroom" : "Standard Bathroom";
+                                      const count = opt.sharingCount;
+                                      updated[optIdx].name = count === 1 ? `Single Room (${ensuiteStr})` : `${count}-People Sharing (${ensuiteStr})`;
+                                      setRoomOptions(updated);
+                                    }}
+                                    className="w-full rounded-md border border-neutral-200 p-1 bg-white text-[10px] font-sans"
+                                  >
+                                    <option value="no">Standard</option>
+                                    <option value="yes">🚿 Ensuite</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-neutral-400 font-bold mb-0.5 text-[8px] uppercase tracking-wide">Rent ($/mo)</label>
+                                  <input
+                                    type="number"
+                                    required
+                                    value={opt.price}
+                                    onChange={(e) => {
+                                      const updated = [...roomOptions];
+                                      updated[optIdx].price = Number(e.target.value);
+                                      setRoomOptions(updated);
+                                    }}
+                                    className="w-full rounded-md border border-neutral-200 p-1 bg-white text-[10px] font-sans"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-neutral-400 font-bold mb-0.5 text-[8px] uppercase tracking-wide">Avail Slots</label>
+                                  <input
+                                    type="number"
+                                    required
+                                    value={opt.availableSlots}
+                                    onChange={(e) => {
+                                      const updated = [...roomOptions];
+                                      updated[optIdx].availableSlots = Number(e.target.value);
+                                      setRoomOptions(updated);
+                                    }}
+                                    className="w-full rounded-md border border-neutral-200 p-1 bg-white text-[10px] font-sans"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-neutral-400 font-bold mb-0.5 text-[8px] uppercase tracking-wide">Max Slots</label>
+                                  <input
+                                    type="number"
+                                    required
+                                    value={opt.maxSlots}
+                                    onChange={(e) => {
+                                      const updated = [...roomOptions];
+                                      updated[optIdx].maxSlots = Number(e.target.value);
+                                      setRoomOptions(updated);
+                                    }}
+                                    className="w-full rounded-md border border-neutral-200 p-1 bg-white text-[10px] font-sans"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {roomOptions.length > 0 && (
+                        <div className="bg-blue-50/75 p-2.5 rounded-xl text-[9px] text-blue-900 border border-blue-100/60 space-y-1.5 leading-normal">
+                          <div className="flex justify-between items-center bg-white p-2 rounded-lg border border-blue-100">
+                            <div>
+                              <p className="font-extrabold text-blue-900 uppercase tracking-wide">Totals from Room Options</p>
+                              <p className="text-neutral-500 font-semibold font-sans mt-0.5">
+                                Sum slots: <strong>{roomOptions.reduce((acc, o) => acc + o.availableSlots, 0)}</strong> free / <strong>{roomOptions.reduce((acc, o) => acc + o.maxSlots, 0)}</strong> max. Minimum price: <strong>${roomOptions.length > 0 ? Math.min(...roomOptions.map(o => o.price)) : price}</strong>.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAvailableSlots(roomOptions.reduce((acc, o) => acc + o.availableSlots, 0));
+                                setMaxSlots(roomOptions.reduce((acc, o) => acc + o.maxSlots, 0));
+                                if (roomOptions.length > 0) {
+                                  setPrice(Math.min(...roomOptions.map(o => o.price)));
+                                }
+                              }}
+                              className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded-md font-extrabold uppercase text-[8px] cursor-pointer transition-colors"
+                            >
+                              Sync Form Slots
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
 
@@ -2362,6 +2580,11 @@ export default function AdminDashboard({
                           // Save dynamic credentials
                           localStorage.setItem("dopes_gmail_user", smtpUser.trim());
                           localStorage.setItem("dopes_gmail_app_password", cleanPass);
+                          try {
+                            await saveSMTPSettingsToFirestore(smtpUser.trim(), cleanPass);
+                          } catch (fsErr) {
+                            console.error("Failed to sync SMTP to Firestore:", fsErr);
+                          }
                           
                           // Close the current modal and run transmission logic
                           const activeBooking = emailStatusModal.booking;
@@ -2506,22 +2729,144 @@ export default function AdminDashboard({
                     <p className="text-[10px] text-neutral-400 mb-1.5 font-normal">Never enter your standard Google Account password. Google requires the 16-character SMTP custom App Password code.</p>
                     <input
                       type="password"
-                      className="w-full px-3 py-2 bg-neutral-50 border rounded-lg focus:ring-1 focus:ring-blue-500 outline-hidden font-mono text-neutral-800 animate-pulse"
+                      className="w-full px-3 py-2 bg-neutral-50 border rounded-lg focus:ring-1 focus:ring-blue-500 outline-hidden font-mono text-neutral-800"
                       value={smtpPass}
                       onChange={(e) => setSmtpPass(e.target.value)}
                       placeholder="e.g. abcd efgh ijkl mnop"
                     />
                   </div>
+                  
+                  {smtpTestResult && (
+                    <div className={`p-3 rounded-lg border text-[11px] leading-relaxed ${
+                      smtpTestResult.success 
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-800" 
+                        : "bg-red-50 border-red-200 text-red-800"
+                    }`}>
+                      <p className="font-bold">{smtpTestResult.message}</p>
+                      {smtpTestResult.warning && (
+                        <p className="mt-1 font-mono text-[9.5px] text-red-600 bg-red-100/50 p-1.5 rounded-sm break-all font-semibold">
+                          Error Details: {smtpTestResult.warning}
+                        </p>
+                      )}
+                      {smtpTestResult.suggestion && (
+                        <p className="mt-1 font-semibold text-neutral-700 bg-white p-2 rounded-sm border border-red-100 mb-0.5">
+                          💡 Suggestion: {smtpTestResult.suggestion}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               
-              <div className="bg-neutral-50 px-6 py-4 flex justify-end gap-2.5 border-t shrink-0">
+              <div className="bg-neutral-50 px-6 py-4 flex justify-end gap-2.5 border-t shrink-0 flex-wrap">
                 <button
-                  onClick={() => {
+                  type="button"
+                  disabled={isTestingSmtp}
+                  onClick={async () => {
+                    if (!smtpUser.includes("@gmail.com")) {
+                      alert("Please specify a valid sender @gmail.com address!");
+                      return;
+                    }
+                    const cleanPass = smtpPass.trim().replace(/\s+/g, "");
+                    if (!cleanPass) {
+                      alert("Please paste your 16-character Google App Password first before testing!");
+                      return;
+                    }
+
+                    setIsTestingSmtp(true);
+                    setSmtpTestResult(null);
+                    try {
+                      const response = await fetch("/api/send-email", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          to: smtpUser, // Send a verification query to ourselves
+                          subject: "DOPES PORTAL - SMTP SECURE CONNECTION TEST ✉️",
+                          text: `Dopes Accommodation Portal SMTP verification! This confirms that your manual Gmail credentials (User: ${smtpUser}) are authenticating beautifully.`,
+                          html: `
+                            <div style="font-family:sans-serif; max-width:500px; margin:0 auto; padding:20px; border:1px solid #e2e8f0; border-radius:12px; background-color:#ffffff;">
+                              <h2 style="color:#1e3a8a; margin-top:0;">🎉 Dopes SMTP Secured!</h2>
+                              <p style="color:#334155; font-size:14px; line-height:1.5;">This confirms that your manual Gmail SMTP credentials are authenticating successfully and can dispatch student reservations!</p>
+                              <div style="background-color:#f1f5f9; padding:10px 15px; border-radius:8px; font-size:12px; font-family:monospace; color:#475569; margin:15px 0;">
+                                <strong>Sender:</strong> ${smtpUser}<br/>
+                                <strong>Authenticated:</strong> Gmail SMTP SSL Port 465/587<br/>
+                                <strong>Timestamp:</strong> ${new Date().toLocaleString()}
+                              </div>
+                              <p style="color:#64748b; font-size:12px; margin-bottom:0;">Please proceed to secure more rooms for Midlands State University students.</p>
+                            </div>
+                          `,
+                          gmailUser: smtpUser,
+                          gmailAppPassword: cleanPass
+                        })
+                      });
+
+                      const responseText = await response.text();
+                      let data;
+                      try {
+                        data = JSON.parse(responseText);
+                      } catch (e) {
+                        data = { success: false, details: responseText };
+                      }
+
+                      if (data.success && !data.simulated) {
+                        setSmtpTestResult({
+                          success: true,
+                          message: `Connection Successful! A verification email has been dispatched to ${smtpUser}. Please check your inbox (including spam folder).`
+                        });
+                      } else if (data.success && data.simulated) {
+                        setSmtpTestResult({
+                          success: false,
+                          message: "Warning: Mailer is currently running in simulation mode on the server because no real credentials exist inside your server configurations. Please enter a valid App Password above to authorize real deliveries."
+                        });
+                      } else {
+                        setSmtpTestResult({
+                          success: false,
+                          message: data.warning || "Gmail authentication test failed. Check details below.",
+                          warning: data.details,
+                          suggestion: data.suggestion
+                        });
+                      }
+                    } catch (err: any) {
+                      setSmtpTestResult({
+                        success: false,
+                        message: "Network Connection Error: Could not call the backend /api/send-email dispatch server.",
+                        warning: err?.message || String(err)
+                      });
+                    } finally {
+                      setIsTestingSmtp(false);
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                    isTestingSmtp 
+                      ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" 
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  }`}
+                >
+                  {isTestingSmtp ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      Testing SMTP...
+                    </>
+                  ) : (
+                    <>
+                      <Mail size={12} />
+                      Test Connection
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={async () => {
                     localStorage.removeItem("dopes_gmail_user");
                     localStorage.removeItem("dopes_gmail_app_password");
                     setSmtpUser("dopesaccommodationagency@gmail.com");
                     setSmtpPass("");
+                    setSmtpTestResult(null);
+                    try {
+                      await saveSMTPSettingsToFirestore("dopesaccommodationagency@gmail.com", "");
+                    } catch (fsErr) {
+                      console.error("Error clearing settings from Firestore:", fsErr);
+                    }
                     alert("SMTP credentials reset to default configurations!");
                   }}
                   className="bg-neutral-200 hover:bg-neutral-300 text-neutral-700 hover:text-neutral-800 px-4 py-2 rounded-xl text-xs transition cursor-pointer font-bold"
@@ -2529,7 +2874,7 @@ export default function AdminDashboard({
                   Clear Config
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (!smtpUser.includes("@gmail.com")) {
                       alert("Validation error: Gmail sender address must be a valid @gmail.com address!");
                       return;
@@ -2537,8 +2882,14 @@ export default function AdminDashboard({
                     if (smtpPass.length > 0 && smtpPass.replace(/\s+/g, "").length < 12) {
                       alert("Validation warning: The app password looks shorter than standard 16 characters. Please double check that you copy-pasted the SMTP APP PASSWORD generated by Google security.");
                     }
+                    const cleanPass = smtpPass.trim().replace(/\s+/g, "");
                     localStorage.setItem("dopes_gmail_user", smtpUser.trim());
-                    localStorage.setItem("dopes_gmail_app_password", smtpPass.trim().replace(/\s+/g, ""));
+                    localStorage.setItem("dopes_gmail_app_password", cleanPass);
+                    try {
+                      await saveSMTPSettingsToFirestore(smtpUser.trim(), cleanPass);
+                    } catch (fsErr) {
+                      console.error("Error saving settings to Firestore:", fsErr);
+                    }
                     alert("Success! Your Google App SMTP Credentials are now active and synchronized locally.");
                     setShowSmtpSettings(false);
                   }}

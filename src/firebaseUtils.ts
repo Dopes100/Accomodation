@@ -2,6 +2,7 @@ import {
   collection, 
   doc, 
   setDoc, 
+  getDoc,
   deleteDoc, 
   onSnapshot, 
   getDocs,
@@ -184,10 +185,27 @@ export async function submitBookingToFirestore(booking: Booking, currentHouse: H
 
     // 2. Subtract slots on the referenced house
     const remainingSlots = Math.max(0, currentHouse.availableSlots - booking.headsCount);
+    
+    // Also subtract slots for the selected room option if applicable
+    let updatedRoomOptions = currentHouse.roomOptions;
+    if (booking.roomOptionId && currentHouse.roomOptions) {
+      updatedRoomOptions = currentHouse.roomOptions.map((opt) => {
+        if (opt.id === booking.roomOptionId) {
+          const newSlots = Math.max(0, opt.availableSlots - booking.headsCount);
+          return {
+            ...opt,
+            availableSlots: newSlots
+          };
+        }
+        return opt;
+      });
+    }
+
     const updatedHouse = {
       ...currentHouse,
       availableSlots: remainingSlots,
-      isAvailable: remainingSlots > 0
+      isAvailable: remainingSlots > 0,
+      ...(updatedRoomOptions ? { roomOptions: updatedRoomOptions } : {})
     };
     const houseRef = doc(db, "houses", currentHouse.id);
     batch.set(houseRef, sanitizeForFirestore(updatedHouse));
@@ -242,4 +260,38 @@ export async function deleteAllBookingsFromFirestore() {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
+
+/**
+ * Saves SMTP configuration to Firestore settings collection.
+ */
+export async function saveSMTPSettingsToFirestore(smtpUser: string, smtpPass: string) {
+  const path = "settings/smtp";
+  try {
+    await setDoc(doc(db, "settings", "smtp"), {
+      smtpUser: smtpUser.trim(),
+      smtpPass: smtpPass.trim(),
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Loads SMTP configuration from Firestore settings collection.
+ */
+export async function getSMTPSettingsFromFirestore() {
+  const path = "settings/smtp";
+  try {
+    const docSnap = await getDoc(doc(db, "settings", "smtp"));
+    if (docSnap.exists()) {
+      return docSnap.data() as { smtpUser: string; smtpPass: string; updatedAt?: string };
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return null;
+  }
+}
+
 

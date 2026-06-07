@@ -5,6 +5,7 @@
 
 import React, { useState } from "react";
 import { House, Booking } from "../types";
+import { getSMTPSettingsFromFirestore } from "../firebaseUtils";
 import { 
   X, 
   MessageSquare, 
@@ -39,6 +40,17 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
   // Step: "details" | "payment" | "emailConfirm"
   const [step, setStep] = useState<"details" | "payment" | "emailConfirm">("details");
 
+  // Room Option selection parameter
+  const [selectedRoomOptionId, setSelectedRoomOptionId] = useState<string>(() => {
+    if (house.roomOptions && house.roomOptions.length > 0) {
+      return house.roomOptions[0].id;
+    }
+    return "";
+  });
+
+  const selectedRoomOption = house.roomOptions?.find(opt => opt.id === selectedRoomOptionId);
+  const currentRentPrice = selectedRoomOption ? selectedRoomOption.price : house.price;
+
   // Form Parameters
   const [studentName, setStudentName] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
@@ -51,7 +63,12 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "EcoCash">("EcoCash");
   const [ecoCashNumber, setEcoCashNumber] = useState("");
   const [depositChoice, setDepositChoice] = useState<"Full" | "None" | "Custom">("Full");
-  const [customDepositAmount, setCustomDepositAmount] = useState<number>(house.price);
+  const [customDepositAmount, setCustomDepositAmount] = useState<number>(currentRentPrice);
+
+  // Sync custom deposit price on rent change
+  React.useEffect(() => {
+    setCustomDepositAmount(currentRentPrice);
+  }, [currentRentPrice, house.id]);
 
   // File Proof States
   const [proofFile, setProofFile] = useState<File | null>(null);
@@ -61,6 +78,35 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
   // Email simulation states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailProgress, setEmailProgress] = useState<"connecting" | "sending" | "sent">("connecting");
+  const [emailDispatchResult, setEmailDispatchResult] = useState<{
+    success: boolean;
+    simulated: boolean;
+    warning?: string;
+    details?: string;
+    suggestion?: string;
+  } | null>(null);
+
+  const [smtpUser, setSmtpUser] = useState("dopesaccommodationagency@gmail.com");
+  const [smtpPass, setSmtpPass] = useState("");
+
+  React.useEffect(() => {
+    async function loadSmtp() {
+      try {
+        const settings = await getSMTPSettingsFromFirestore();
+        if (settings) {
+          if (settings.smtpUser) {
+            setSmtpUser(settings.smtpUser);
+          }
+          if (settings.smtpPass) {
+            setSmtpPass(settings.smtpPass);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load SMTP settings inside BookingFormModal:", err);
+      }
+    }
+    loadSmtp();
+  }, []);
 
   const AGENT_FEE_PER_HEAD = 20;
   const baseAgentFee = headsCount * AGENT_FEE_PER_HEAD;
@@ -72,7 +118,7 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
   // Selected deposit upfront amount choice
   const selectedDepositValue = depositChoice === "Custom" 
     ? customDepositAmount 
-    : (depositChoice === "Full" ? house.price : 0);
+    : (depositChoice === "Full" ? currentRentPrice : 0);
 
   // Total amount user must actually transfer on-site when sending money
   const unifiedTotalToTransfer = totalAgentFee + selectedDepositValue;
@@ -194,7 +240,7 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
     const bookingId = "bkg-" + Date.now();
     const finalDepositValue = depositChoice === "Custom" 
       ? customDepositAmount 
-      : (depositChoice === "Full" ? house.price : 0);
+      : (depositChoice === "Full" ? currentRentPrice : 0);
 
     const newBooking: Booking = {
       id: bookingId,
@@ -213,6 +259,9 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
       depositChoice,
       customDepositAmount: finalDepositValue,
       proofOfPaymentBase64: proofBase64 || undefined,
+      roomOptionId: selectedRoomOptionId || undefined,
+      roomOptionName: selectedRoomOption?.name || undefined,
+      roomOptionPrice: currentRentPrice,
     };
 
     try {
@@ -230,7 +279,7 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
     
     // Structure formal email HTML invoice payload
     const depositDesc = depositChoice === "Full" 
-      ? `Full Deposit Upfront ($${house.price} USD)` 
+      ? `Full Deposit Upfront ($${currentRentPrice} USD)` 
       : (depositChoice === "None" ? "No Upfront Deposit" : `Custom Deposit Offer ($${customDepositAmount} USD)`);
 
     const agentFeeDetail = `$${headsCount * 20} USD`;
@@ -264,7 +313,7 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
             Dear <strong>${studentName}</strong>,
           </p>
           <p style="font-size: 14px; color: #334155; line-height: 1.6;">
-            Your selected room space has been provisionally reserved. An official portal hold has been established for you at <strong>${house.title}</strong>, located in the ${house.location} region.
+            Your selected room space has been provisionally reserved. An official portal hold has been established for you at <strong>${house.title}</strong>${selectedRoomOption ? ` (Room Option: <strong>${selectedRoomOption.name}</strong>)` : ""}, located in the ${house.location} region.
           </p>
           <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 25px;">
             Please find the detailed financial breakdown for your slot acquisition transaction listed below.
@@ -340,6 +389,8 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
           subject: `DOPES OFFICIAL RESERVATION INVOICE [${invoiceNumber}]`,
           html: emailHtmlAndText,
           text: `Dear ${studentName}. Your provisional securing invoice has been generated for ${house.title} in Gweru. Your total due is $${totalSent} USD. Please finalize the verification on WhatsApp.`,
+          gmailUser: smtpUser,
+          gmailAppPassword: smtpPass,
         };
         
         const response = await fetch("/api/send-email", {
@@ -359,8 +410,23 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
           data = { success: false, error: responseText };
         }
         console.log("Email dispatch service response:", data);
-      } catch (error) {
+        if (data && typeof data === "object") {
+          setEmailDispatchResult({
+            success: !!data.success,
+            simulated: !!data.simulated,
+            warning: data.warning,
+            details: data.details,
+            suggestion: data.suggestion,
+          });
+        }
+      } catch (error: any) {
         console.error("Failed to make /api/send-email request:", error);
+        setEmailDispatchResult({
+          success: false,
+          simulated: false,
+          warning: "Could not reach the backend email verification server.",
+          details: error instanceof Error ? error.message : String(error)
+        });
       } finally {
         // Wait a slight fraction for visual polish then resolve sending progress modal
         setTimeout(() => {
@@ -372,7 +438,7 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
 
   const handleOpenWhatsApp = () => {
     const depositText = depositChoice === "Full" 
-      ? `Full Deposit upfront ($${house.price} USD)` 
+      ? `Full Deposit upfront ($${currentRentPrice} USD)` 
       : (depositChoice === "None" ? "No Deposit upfront (Pay on Move-in)" : `Custom Deposit Offer: $${customDepositAmount} USD (Affordable upfront)`);
 
     const paymentText = paymentMethod === "Cash" 
@@ -386,7 +452,8 @@ My slot booking has been securely completed and registered on your portal. Here 
 
 📌 *House Title:* ${house.title}
 📍 *Suburb Location:* ${house.location}
-💰 *Price structure:* $${house.price} USD / month
+${selectedRoomOption ? `⚙️ *Room Option:* ${selectedRoomOption.name} (Sharing: ${selectedRoomOption.sharingCount} pple, Ensuite: ${selectedRoomOption.ensuite ? "Yes" : "No"})` : ""}
+💰 *Price structure:* $${currentRentPrice} USD / month
 
 *Portal Reservation details:*
 👤 *Name:* ${studentName} (${gender})
@@ -453,7 +520,7 @@ Please confirm my mail delivery receipt confirmation from dopesaccommodationagen
                 House: <span className="font-bold text-white">{house.title}</span>
               </div>
               <div className="font-extrabold text-amber-300">
-                ${house.price}/mo
+                ${currentRentPrice}/mo
               </div>
             </div>
           </div>
@@ -524,6 +591,42 @@ Please confirm my mail delivery receipt confirmation from dopesaccommodationagen
                     )}
                   </div>
                 </div>
+
+                {/* Room Options selection logic */}
+                {house.roomOptions && house.roomOptions.length > 0 && (
+                  <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/60 mt-2 space-y-2">
+                    <label className="text-[11.5px] font-extrabold text-slate-700 uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+                      <span>🛏️ Available Room Setup options:</span>
+                    </label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {house.roomOptions.map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setSelectedRoomOptionId(opt.id)}
+                          className={`w-full p-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer text-left ${
+                            selectedRoomOptionId === opt.id
+                              ? "bg-blue-600 border-blue-600 text-white shadow-md ring-1 ring-blue-500 scale-[1.01]"
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                          }`}
+                        >
+                          <div>
+                            <span className="font-extrabold text-xs block">
+                              {opt.name}
+                            </span>
+                            <span className={`text-[10px] mt-0.5 block ${selectedRoomOptionId === opt.id ? "text-blue-100" : "text-slate-500"}`}>
+                              👥 {opt.sharingCount === 1 ? "Single Occupancy" : `${opt.sharingCount}-People Sharing`} • 🚽 {opt.ensuite ? "Private ensuite bathroom" : "Standard shared bathroom"}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-black text-xs block">${opt.price} USD</span>
+                            <span className={`text-[9px] block ${selectedRoomOptionId === opt.id ? "text-blue-200" : "text-slate-400"}`}>per month</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3.5">
                   <div>
@@ -670,7 +773,7 @@ Please confirm my mail delivery receipt confirmation from dopesaccommodationagen
                           : "bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100"
                       }`}
                     >
-                      Full (${house.price})
+                      Full (${currentRentPrice})
                     </button>
                     <button
                       type="button"
@@ -729,22 +832,22 @@ Please confirm my mail delivery receipt confirmation from dopesaccommodationagen
                 </span>
                 <div className="flex justify-between text-xs text-slate-600">
                   <span>Room Rent (Monthly)</span>
-                  <span className="font-semibold text-slate-800">${house.price} USD / head / month</span>
+                  <span className="font-semibold text-slate-800">${currentRentPrice} USD / head / month</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-600">
                   <span>Flexible Deposit Choice (Upfront)</span>
                   <span className="font-semibold text-slate-800">
-                    {depositChoice === "Full" ? `$${house.price} USD` : depositChoice === "None" ? "No Upfront Deposit" : `$${customDepositAmount} USD`}
+                    {depositChoice === "Full" ? `$${currentRentPrice} USD` : depositChoice === "None" ? "No Upfront Deposit" : `$${customDepositAmount} USD`}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs font-semibold text-slate-700 bg-slate-100/80 px-2 py-1.5 rounded-lg border border-slate-200/50 my-1">
                   <span>🔑 Rent Balance Due on Move-In</span>
                   <span className="font-bold text-blue-850">
-                    ${Math.max(0, house.price - (depositChoice === "Full" ? house.price : depositChoice === "None" ? 0 : customDepositAmount))} USD
+                    ${Math.max(0, currentRentPrice - (depositChoice === "Full" ? currentRentPrice : depositChoice === "None" ? 0 : customDepositAmount))} USD
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500 italic leading-snug">
-                  * Live Balance: Your paid deposit is a direct prepayment of your rent. (e.g. if monthly rent is ${house.price} USD and you pay an upfront deposit of ${depositChoice === "Full" ? house.price : depositChoice === "None" ? 0 : customDepositAmount} USD, you only pay the remaining balance of ${Math.max(0, house.price - (depositChoice === "Full" ? house.price : depositChoice === "None" ? 0 : customDepositAmount))} USD to the landlord upon arrival).
+                  * Live Balance: Your paid deposit is a direct prepayment of your rent. (e.g. if monthly rent is ${currentRentPrice} USD and you pay an upfront deposit of ${depositChoice === "Full" ? currentRentPrice : depositChoice === "None" ? 0 : customDepositAmount} USD, you only pay the remaining balance of ${Math.max(0, currentRentPrice - (depositChoice === "Full" ? currentRentPrice : depositChoice === "None" ? 0 : customDepositAmount))} USD to the landlord upon arrival).
                 </p>
                 <div className="flex justify-between text-xs text-slate-600 items-center">
                   <span>Securing Agent Fee ({headsCount} Head{headsCount > 1 ? "s" : ""})</span>
@@ -1005,9 +1108,39 @@ Please confirm my mail delivery receipt confirmation from dopesaccommodationagen
                         PORTAL BOOKING COMPLETE!
                       </span>
                       <h4 className="text-lg font-black text-neutral-800 mt-2">Reservation Successfully Registered</h4>
-                      <p className="text-xs text-neutral-500 px-4 mt-1 leading-normal font-medium">
-                        Your direct slot has been committed. An official detailed confirmation email copy has been sent to <strong className="text-blue-600">{studentEmail}</strong> confirming your secure place.
-                      </p>
+                      
+                      {emailDispatchResult?.success && !emailDispatchResult?.simulated && (
+                        <div className="bg-emerald-50 border border-emerald-250 text-emerald-800 rounded-xl p-3 text-xs leading-relaxed mt-2 text-left space-y-1">
+                          <p className="font-extrabold flex items-center gap-1 text-[#059669]">✨ Email Delivery Successful!</p>
+                          <p className="text-neutral-600 font-medium font-sans">
+                            An official detailed copy of your reservation invoice has been successfully dispatched to your inbox: <strong className="text-blue-700">{studentEmail}</strong>.
+                          </p>
+                        </div>
+                      )}
+
+                      {emailDispatchResult?.success && emailDispatchResult?.simulated && (
+                        <div className="bg-amber-50 border border-amber-200 text-amber-950 rounded-xl p-3 text-xs leading-relaxed mt-2 text-left space-y-1">
+                          <p className="font-bold flex items-center gap-1 text-amber-800">📢 Note: Email Simulation Mode</p>
+                          <p className="text-neutral-600 font-medium font-sans">
+                            Your slot is registered securely in our database. However, the automated email to <strong className="text-blue-700">{studentEmail}</strong> was simulated inside the sandbox because the Agency Owner has not yet configured their manual Google SMTP App Password.
+                          </p>
+                        </div>
+                      )}
+
+                      {emailDispatchResult && !emailDispatchResult.success && (
+                        <div className="bg-red-50 border border-red-150 text-red-950 rounded-xl p-3 text-xs leading-relaxed mt-2 text-left space-y-1">
+                          <p className="font-bold flex items-center gap-1 text-red-700">⚠️ Automated Email Notice</p>
+                          <p className="text-neutral-600 font-medium font-sans">
+                            An automated copy could not be dispatched to your email because the Agency's manual Gmail credentials are unconfigured or expired. <strong>But don't worry! Your room space is still held on our secure database.</strong>
+                          </p>
+                        </div>
+                      )}
+
+                      {!emailDispatchResult && (
+                        <p className="text-xs text-neutral-500 px-4 mt-1 leading-normal font-medium">
+                          Your direct slot has been committed. An official detailed confirmation email copy has been prepared for <strong className="text-blue-600">{studentEmail}</strong>.
+                        </p>
+                      )}
                     </div>
 
                     {/* Highly Polished Custom Receipt Checklist */}
@@ -1038,7 +1171,7 @@ Please confirm my mail delivery receipt confirmation from dopesaccommodationagen
                           <div className="flex items-center justify-between py-1 border-b border-slate-100">
                             <span>💸 <strong>Deposit choice:</strong></span>
                             <span className="font-semibold text-emerald-700">
-                              {depositChoice === "Full" ? `Full Deposit Upfront ($${house.price} USD)` : depositChoice === "None" ? "No Upfront Deposit" : `Custom Deposit Offer ($${customDepositAmount} USD)`}
+                              {depositChoice === "Full" ? `Full Deposit Upfront ($${currentRentPrice} USD)` : depositChoice === "None" ? "No Upfront Deposit" : `Custom Deposit Offer ($${customDepositAmount} USD)`}
                             </span>
                           </div>
                           <div className="flex items-center justify-between py-1 border-b border-slate-100">

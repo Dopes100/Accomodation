@@ -9,11 +9,21 @@ export interface HouseDistance {
   telOne: number;     // in km
 }
 
+export interface RoomOption {
+  id: string;
+  name: string;        // e.g. "Single Room (Ensuite)" or "2-People Sharing (No Ensuite)"
+  sharingCount: number; // 1, 2, or 3 people
+  ensuite: boolean;    // true / false
+  price: number;       // in USD per month
+  availableSlots: number;
+  maxSlots: number;
+}
+
 export interface House {
   id: string;
   title: string;
   description: string;
-  price: number; // in USD per month
+  price: number; // in USD per month (default/base price)
   location: string; // e.g., "Nehosho", "Senga Area 2", "Windsor Park"
   roomType: "Single Room" | "Double Shared" | "Cottage Room" | "Boarding Hostel";
   genderLimit: "Mixed" | "Female Only" | "Male Only";
@@ -23,6 +33,7 @@ export interface House {
   availableSlots: number;
   maxSlots: number;
   isAvailable: boolean;
+  roomOptions?: RoomOption[]; // Optional room config variations with distinct pricing/ensuite
 }
 
 export interface Booking {
@@ -43,6 +54,9 @@ export interface Booking {
   customDepositAmount?: number;
   studentEmail?: string;
   proofOfPaymentBase64?: string;
+  roomOptionId?: string;   // specific selected room variation
+  roomOptionName?: string; // name of selected variation helper
+  roomOptionPrice?: number; // stored price for booking reference
 }
 
 // Pre-populated realistic student accommodations around Midlands State University (MSU) Gweru, Zimbabwe.
@@ -67,7 +81,12 @@ export const INITIAL_HOUSES: House[] = [
     ],
     availableSlots: 6,
     maxSlots: 12,
-    isAvailable: true
+    isAvailable: true,
+    roomOptions: [
+      { id: "h1-o1", name: "Single Room (Ensuite Private Bathroom)", sharingCount: 1, ensuite: true, price: 120, availableSlots: 2, maxSlots: 2 },
+      { id: "h1-o2", name: "2-People Sharing (Ensuite Private Bathroom)", sharingCount: 2, ensuite: true, price: 95, availableSlots: 4, maxSlots: 4 },
+      { id: "h1-o3", name: "2-People Sharing (Standard Bathroom)", sharingCount: 2, ensuite: false, price: 80, availableSlots: 6, maxSlots: 6 }
+    ]
   },
   {
     id: "h2",
@@ -89,7 +108,12 @@ export const INITIAL_HOUSES: House[] = [
     ],
     availableSlots: 3,
     maxSlots: 8,
-    isAvailable: true
+    isAvailable: true,
+    roomOptions: [
+      { id: "h2-o1", name: "Single Room (Luxury Ensuite)", sharingCount: 1, ensuite: true, price: 140, availableSlots: 2, maxSlots: 2 },
+      { id: "h2-o2", name: "Single Room (Standard Private)", sharingCount: 1, ensuite: false, price: 110, availableSlots: 3, maxSlots: 3 },
+      { id: "h2-o3", name: "2-People Sharing (Standard Study Corner)", sharingCount: 2, ensuite: false, price: 85, availableSlots: 4, maxSlots: 4 }
+    ]
   },
   {
     id: "h3",
