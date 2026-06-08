@@ -34,14 +34,15 @@ import {
   Mail,
   MessageSquare,
   Settings,
-  Activity
+  Activity,
+  Upload
 } from "lucide-react";
 
 interface AdminDashboardProps {
   houses: House[];
   bookings: Booking[];
-  onAddHouse: (house: House) => void;
-  onEditHouse: (house: House) => void;
+  onAddHouse: (house: House) => void | Promise<void>;
+  onEditHouse: (house: House) => void | Promise<void>;
   onDeleteHouse: (id: string) => void;
   onDeleteBooking: (id: string) => void;
   onDeleteAllBookings?: () => void;
@@ -126,7 +127,53 @@ export default function AdminDashboard({
   const [availableSlots, setAvailableSlots] = useState<number>(6);
   const [maxSlots, setMaxSlots] = useState<number>(12);
   const [roomOptions, setRoomOptions] = useState<RoomOption[]>([]);
+  const [underImprovements, setUnderImprovements] = useState<boolean>(false);
+  const [bookingLocked, setBookingLocked] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   
+  // Compress images down on the client-side to fit comfortably within Firestore's 1MB document size limit
+  const compressImage = (base64Str: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64Str;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 640;
+        const MAX_HEIGHT = 640;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          // Compress as JPEG with 0.5 quality to keep data footprint extremely small (~15KB per image)
+          const compressed = canvas.toDataURL("image/jpeg", 0.5);
+          resolve(compressed);
+        } else {
+          resolve(base64Str);
+        }
+      };
+      img.onerror = () => {
+        resolve(base64Str);
+      };
+    });
+  };
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [previewBookingName, setPreviewBookingName] = useState<string>("");
@@ -878,6 +925,8 @@ export default function AdminDashboard({
     setAvailableSlots(6);
     setMaxSlots(12);
     setRoomOptions([]);
+    setUnderImprovements(false);
+    setBookingLocked(false);
     setShowAddForm(false);
   };
 
@@ -897,47 +946,71 @@ export default function AdminDashboard({
     setAvailableSlots(house.availableSlots);
     setMaxSlots(house.maxSlots);
     setRoomOptions(house.roomOptions && house.roomOptions.length > 0 ? JSON.parse(JSON.stringify(house.roomOptions)) : []);
+    setUnderImprovements(!!house.underImprovements);
+    setBookingLocked(!!house.bookingLocked);
     setShowAddForm(true); // Re-use add form panel
   };
 
-  const handleSaveHouse = (e: React.FormEvent) => {
+  const handleSaveHouse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !description || !location) return;
+    if (!title || !description || !location || isSaving) return;
 
-    let cleanUrls = imageUrls.map(url => url.trim()).filter(url => url !== "");
-    if (cleanUrls.length === 0) {
-      cleanUrls = [
-        "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80"
-      ];
+    setIsSaving(true);
+    try {
+      let cleanUrls = imageUrls.map(url => url.trim()).filter(url => url !== "");
+      if (cleanUrls.length === 0) {
+        cleanUrls = [
+          "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80"
+        ];
+      } else {
+        // Loop over active image URLs and apply compressImage asynchronously if they are URIs (compressing everything to ensure sizes remain ultra-safe)
+        for (let i = 0; i < cleanUrls.length; i++) {
+          const url = cleanUrls[i];
+          if (url.startsWith("data:image/")) {
+            try {
+              cleanUrls[i] = await compressImage(url);
+            } catch (err) {
+              console.error("Failed to compress image on save: ", err);
+            }
+          }
+        }
+      }
+
+      const houseData: House = {
+        id: editingHouseId || "h-" + Date.now(),
+        title,
+        description,
+        price: Number(price),
+        location,
+        roomType,
+        genderLimit,
+        distances: {
+          mainCampus: Number(mainCampusDist),
+          batanai: Number(batanaiDist),
+          telOne: Number(telOneDist)
+        },
+        features: selectedFeatures,
+        images: cleanUrls,
+        availableSlots: Number(availableSlots),
+        maxSlots: Number(maxSlots),
+        isAvailable: Number(availableSlots) > 0,
+        roomOptions: roomOptions.length > 0 ? roomOptions : [],
+        underImprovements,
+        bookingLocked
+      };
+
+      if (editingHouseId) {
+        await onEditHouse(houseData);
+      } else {
+        await onAddHouse(houseData);
+      }
+      resetForm();
+    } catch (err) {
+      console.error("Failed to save property listing: ", err);
+      alert("Error saving: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSaving(false);
     }
-
-    const houseData: House = {
-      id: editingHouseId || "h-" + Date.now(),
-      title,
-      description,
-      price: Number(price),
-      location,
-      roomType,
-      genderLimit,
-      distances: {
-        mainCampus: Number(mainCampusDist),
-        batanai: Number(batanaiDist),
-        telOne: Number(telOneDist)
-      },
-      features: selectedFeatures,
-      images: cleanUrls,
-      availableSlots: Number(availableSlots),
-      maxSlots: Number(maxSlots),
-      isAvailable: Number(availableSlots) > 0,
-      roomOptions: roomOptions.length > 0 ? roomOptions : []
-    };
-
-    if (editingHouseId) {
-      onEditHouse(houseData);
-    } else {
-      onAddHouse(houseData);
-    }
-    resetForm();
   };
 
   if (!isAuthenticated) {
@@ -1153,6 +1226,16 @@ export default function AdminDashboard({
                           <span className="text-[10px] bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-md font-semibold">
                             {house.location}
                           </span>
+                          {house.underImprovements && (
+                            <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-md font-bold uppercase">
+                              Under Improvements
+                            </span>
+                          )}
+                          {house.bookingLocked && (
+                            <span className="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded-md font-bold uppercase">
+                              Suspended
+                            </span>
+                          )}
                         </div>
                         <h4 className="font-bold text-neutral-800 text-sm">{house.title}</h4>
                         <p className="text-xs text-neutral-400 line-clamp-1">{house.description}</p>
@@ -1363,6 +1446,40 @@ export default function AdminDashboard({
                       </div>
                     </div>
 
+                    {/* Listing Status Policies */}
+                    <div className="p-2.5 bg-neutral-50 rounded-lg space-y-2 border border-neutral-100">
+                      <span className="font-extrabold text-neutral-700 block uppercase text-[10px] tracking-wider mb-1">
+                        Listing Control / Policies
+                      </span>
+                      <div className="space-y-2 text-[10px] font-semibold text-neutral-600">
+                        <label className="flex items-center gap-2 cursor-pointer p-1 bg-white border rounded-md hover:bg-neutral-50/50 transition">
+                          <input
+                            type="checkbox"
+                            checked={underImprovements}
+                            onChange={(e) => setUnderImprovements(e.target.checked)}
+                            className="accent-blue-600 h-3.5 w-3.5"
+                          />
+                          <div>
+                            <span className="block text-neutral-800 font-bold">Under Improvements</span>
+                            <span className="text-[9px] text-neutral-400 font-medium">Show as under construction (locks bookings)</span>
+                          </div>
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer p-1 bg-white border rounded-md hover:bg-neutral-50/50 transition">
+                          <input
+                            type="checkbox"
+                            checked={bookingLocked}
+                            onChange={(e) => setBookingLocked(e.target.checked)}
+                            className="accent-blue-600 h-3.5 w-3.5"
+                          />
+                          <div>
+                            <span className="block text-neutral-800 font-bold">Lock / Suspend Booking</span>
+                            <span className="text-[9px] text-neutral-400 font-medium">Temporarily disable student booking attempts</span>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
                     {/* Features checklist */}
                     <div>
                       <label className="block text-neutral-600 font-bold mb-1">Amenities</label>
@@ -1394,7 +1511,39 @@ export default function AdminDashboard({
 
                       {/* Display preset Quick-Add suggestions */}
                       <div className="text-[10px] text-neutral-400 font-medium pb-1.5 border-b border-neutral-100">
-                        Quick Preset Photos:
+                        <div className="flex justify-between items-center mb-1">
+                          <span>Quick Preset Photos:</span>
+                          <label className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[9px] font-bold transition-all flex items-center gap-0.5 cursor-pointer">
+                            <Upload size={10} />
+                            Upload Local Photo
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => {
+                                if (e.target.files) {
+                                  Array.from(e.target.files).forEach(file => {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      const rawBase64 = reader.result as string;
+                                      compressImage(rawBase64).then((compressed) => {
+                                        setImageUrls(prev => {
+                                          const filtered = prev.filter(u => u.trim() !== "");
+                                          if (filtered.length < 10) {
+                                            return [...filtered, compressed];
+                                          }
+                                          return prev;
+                                        });
+                                      });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  });
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {[
                             { label: "🛏️ Bedroom", url: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80" },
@@ -1682,9 +1831,26 @@ export default function AdminDashboard({
 
                     <button
                       type="submit"
-                      className="w-full bg-blue-600 text-white rounded-xl py-2.5 font-bold hover:bg-blue-700 transition-all cursor-pointer"
+                      disabled={isSaving}
+                      className={`w-full text-white rounded-xl py-2.5 font-bold transition-all flex items-center justify-center gap-2 ${
+                        isSaving
+                          ? "bg-blue-400 cursor-not-allowed"
+                          : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                      }`}
                     >
-                      {editingHouseId ? "Save Modifications" : "Publish Listing"}
+                      {isSaving ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Saving Modifications...
+                        </>
+                      ) : editingHouseId ? (
+                        "Save Modifications"
+                      ) : (
+                        "Publish Listing"
+                      )}
                     </button>
                   </form>
                 </div>

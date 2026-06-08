@@ -103,7 +103,7 @@ export async function initializeDatabaseIfEmpty() {
 
           if (hasOldImages || hasOldLocation || imagesMismatch || locationMismatch || titleMismatch || descMismatch || bookingLockedMismatch || isAvailableMismatch) {
             console.log("Synchronizing updated h12 listing (new KMP ZESA location, locally-enhanced photos, description, and locked booking status) to Firestore...");
-            await setDoc(h12Ref, targetHouse, { merge: true });
+            await setDoc(h12Ref, targetHouse); // Complete overwrite to purge any oversized corrupt/bloat attributes of old images
             console.log("Synchronized h12 updates successfully.");
           }
         }
@@ -134,7 +134,7 @@ export async function initializeDatabaseIfEmpty() {
 
           if (imagesMismatch || locationMismatch || titleMismatch || descMismatch) {
             console.log("Synchronizing updated h13 listing (Psalms Villa) to Firestore...");
-            await setDoc(h13Ref, targetHouse, { merge: true });
+            await setDoc(h13Ref, targetHouse); // Complete overwrite to purge any oversized/corrupt attributes
             console.log("Synchronized h13 updates successfully.");
           }
         }
@@ -161,7 +161,7 @@ export async function initializeDatabaseIfEmpty() {
 
           if (titleMismatch || descMismatch || locationMismatch || improvementsMismatch) {
             console.log("Synchronizing updated h14 listing (Diagonal Opposite Allana) to Firestore...");
-            await setDoc(h14Ref, targetHouse, { merge: true });
+            await setDoc(h14Ref, targetHouse); // Complete overwrite to purge any oversized/corrupt attributes
             console.log("Synchronized h14 updates successfully.");
           }
         }
