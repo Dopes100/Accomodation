@@ -319,45 +319,6 @@ export const INITIAL_HOUSES: House[] = [
     isAvailable: true
   },
   {
-    id: "h12",
-    title: "New Solar-Oasis Executive Residence",
-    description: "Brand new ultra-modern 12-room student residence under final touches (some updates are currently underway). Features a brilliant high-capacity PV-HANGE solar hybrid power backup system and rooftop solar panels. Completely tiled with premium marble-pattern floors, state-of-the-art bathrooms with gorgeous glass showers, spacious tiled sharing kitchen, strong steel safety gate doors, burglar bars, and solid concrete outdoor multi-troughs laundry basins. Features unlimited high speed Wi-Fi and 24/7 solar-pump borehole water.",
-    price: 100,
-    location: "KMP (ZESA Area), Gweru",
-    roomType: "Double Shared",
-    genderLimit: "Mixed",
-    distances: {
-      mainCampus: 0.9,
-      batanai: 1.5,
-      telOne: 5.6
-    },
-    features: [
-      "PV-HANGE Solar-Hybrid Power",
-      "Rooftop Solar PV Panels",
-      "High-Speed Wi-Fi",
-      "Unlimited Solar Borehole",
-      "Glass Shower Units",
-      "Outdoor Multi-Troughs Laundry",
-      "Maximum Security Steel Gate",
-      "Premium Marble Tiling"
-    ],
-    images: [
-      "/images/h12/h12_exterior.png",
-      "/images/h12/h12_solar_system.png",
-      "/images/h12/h12_bedroom.png",
-      "/images/h12/h12_bathroom.png",
-      "/images/h12/h12_laundry_kitchen.png"
-    ],
-    availableSlots: 25,
-    maxSlots: 25,
-    isAvailable: false,
-    bookingLocked: true,
-    roomOptions: [
-      { id: "h12-o1", name: "3-People Sharing Room (1 Room Available)", sharingCount: 3, ensuite: true, price: 100, availableSlots: 3, maxSlots: 3 },
-      { id: "h12-o2", name: "2-People Sharing Room (11 Rooms Available)", sharingCount: 2, ensuite: false, price: 100, availableSlots: 22, maxSlots: 22 }
-    ]
-  },
-  {
     id: "h13",
     title: "Psalms Villa",
     description: "Comfortable and safe student boardings located in the peaceful KMP Zesa area, just a short 0.5km (5-minute walk) to the MSU campus. Features spacious double sharing rooms on a beautiful white-and-grey marble patterned tiled floor. Each room is equipped with a clean study desk and wooden chair. Includes a secure steel partition safety gate, built-in storage shelving units, clean bathroom facilities, unlimited borehole water supply, high-speed Wi-Fi, and a lovely communal student kitchen fully fitted with Capri chest freezers and a wall-mounted flat-screen television.",

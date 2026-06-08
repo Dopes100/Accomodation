@@ -61,32 +61,31 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 export async function initializeDatabaseIfEmpty() {
   const path = "houses";
   try {
+    // Proactively delete 'h12' (New Solar-Oasis Executive Residence) as requested by the user
+    try {
+      const h12Ref = doc(db, path, "h12");
+      const h12Snap = await getDoc(h12Ref);
+      if (h12Snap.exists()) {
+        console.log("Removing user-requested 'New Solar-Oasis Executive Residence' (h12) listing...");
+        await deleteDoc(h12Ref);
+      }
+    } catch (err) {
+      console.error("Failed to delete h12 listing during startup process: ", err);
+    }
+
     const querySnapshot = await getDocs(collection(db, path));
     if (querySnapshot.empty) {
       console.log("Firestore houses collection is empty. Seed initializing with realistic MSU listings...");
       const batch = writeBatch(db);
       INITIAL_HOUSES.forEach((house) => {
-        const docRef = doc(db, path, house.id);
-        batch.set(docRef, house);
+        // Skip h12 since the user explicitly deleted it
+        if (house.id !== "h12") {
+          const docRef = doc(db, path, house.id);
+          batch.set(docRef, house);
+        }
       });
       await batch.commit();
       console.log("MSU listings initialized successfully.");
-    } else {
-      // Ensure h12, h13, h14 listings exist in Firestore so they are present if deleted,
-      // but NEVER overwrite them if they already exist, preserving all admin modifications.
-      const criticalListingIds = ["h12", "h13", "h14"];
-      for (const id of criticalListingIds) {
-        const docRef = doc(db, path, id);
-        const docSnap = await getDoc(docRef);
-        if (!docSnap.exists()) {
-          console.log(`Seeding missing critical listing ${id} to Firestore...`);
-          const targetHouse = INITIAL_HOUSES.find((h) => h.id === id);
-          if (targetHouse) {
-            await setDoc(docRef, targetHouse);
-            console.log(`Seeded critical listing ${id} successfully.`);
-          }
-        }
-      }
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
