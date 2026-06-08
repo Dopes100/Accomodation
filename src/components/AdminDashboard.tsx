@@ -130,6 +130,7 @@ export default function AdminDashboard({
   const [underImprovements, setUnderImprovements] = useState<boolean>(false);
   const [bookingLocked, setBookingLocked] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [deletingHouseId, setDeletingHouseId] = useState<string | null>(null);
   
   // Compress images down on the client-side to fit comfortably within Firestore's 1MB document size limit
   const compressImage = (base64Str: string): Promise<string> => {
@@ -1267,14 +1268,39 @@ export default function AdminDashboard({
                           <Edit3 size={13} /> Edit
                         </button>
                         <button
-                          onClick={() => {
+                          disabled={deletingHouseId !== null}
+                          onClick={async () => {
                             if (confirm(`Are you sure you want to delete ${house.title}?`)) {
-                              onDeleteHouse(house.id);
+                              setDeletingHouseId(house.id);
+                              try {
+                                await onDeleteHouse(house.id);
+                              } catch (err) {
+                                console.error("Failed to delete property:", err);
+                                alert("Failed to delete property. Please try again.");
+                              } finally {
+                                setDeletingHouseId(null);
+                              }
                             }
                           }}
-                          className="flex-1 bg-red-50 hover:bg-red-105 text-red-650 border border-red-100 rounded-xl p-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          className={`flex-1 border p-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1 rounded-xl cursor-pointer ${
+                            deletingHouseId === house.id
+                              ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed animate-pulse"
+                              : "bg-red-50 hover:bg-red-100 text-red-650 border-red-100"
+                          }`}
                         >
-                          <Trash2 size={13} /> Delete
+                          {deletingHouseId === house.id ? (
+                            <>
+                              <svg className="animate-spin h-3 w-3 text-neutral-400" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                              </svg>
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 size={13} /> Delete
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
