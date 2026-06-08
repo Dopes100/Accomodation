@@ -6,7 +6,7 @@
 import React, { useState } from "react";
 import { jsPDF } from "jspdf";
 import { House, Booking, RoomOption } from "../types";
-import { getSMTPSettingsFromFirestore, saveSMTPSettingsToFirestore } from "../firebaseUtils";
+import { getSMTPSettingsFromFirestore, saveSMTPSettingsToFirestore, updateBookingInFirestore } from "../firebaseUtils";
 import { 
   Lock, 
   Plus, 
@@ -518,6 +518,10 @@ export default function AdminDashboard({
       
       if (data.success) {
         if (data.simulated) {
+          await updateBookingInFirestore(booking.id, {
+            emailStatus: "simulated",
+            emailSentAt: new Date().toISOString()
+          });
           setEmailStatusModal({
             show: true,
             success: true,
@@ -529,6 +533,10 @@ export default function AdminDashboard({
             suggestion: "Configure your Gmail SMTP credentials below to toggle real-time email carrier delivery instantly!"
           });
         } else {
+          await updateBookingInFirestore(booking.id, {
+            emailStatus: "sent",
+            emailSentAt: new Date().toISOString()
+          });
           setEmailStatusModal({
             show: true,
             success: true,
@@ -539,6 +547,11 @@ export default function AdminDashboard({
           });
         }
       } else {
+        await updateBookingInFirestore(booking.id, {
+          emailStatus: "failed",
+          emailError: data.warning || data.details || "SMTP rejection",
+          emailSentAt: new Date().toISOString()
+        });
         setEmailStatusModal({
           show: true,
           success: false,
@@ -553,6 +566,15 @@ export default function AdminDashboard({
       }
     } catch (err: any) {
       console.error("PDF Receipt dispatch failure:", err);
+      try {
+        await updateBookingInFirestore(booking.id, {
+          emailStatus: "failed",
+          emailError: err.message,
+          emailSentAt: new Date().toISOString()
+        });
+      } catch (logErr) {
+        console.error("Could not write failure log because:", logErr);
+      }
       setEmailStatusModal({
         show: true,
         success: false,
@@ -1769,7 +1791,34 @@ export default function AdminDashboard({
                                 <span className="bg-neutral-100 px-1.5 py-0.5 rounded-md font-medium text-[10px]">{booking.gender}</span>
                                 <span>{booking.studentPhone}</span>
                                 {booking.studentEmail && (
-                                  <span className="text-neutral-500 font-medium">✉️ {booking.studentEmail}</span>
+                                  <span className="text-neutral-500 font-medium flex items-center gap-1 flex-wrap">
+                                    <span>✉️ {booking.studentEmail}</span>
+                                    {booking.emailStatus === "sent" && (
+                                      <span 
+                                        className="bg-emerald-50 text-emerald-700 text-[9px] font-extrabold px-1.5 py-0.5 border border-emerald-200 rounded select-none cursor-help shrink-0" 
+                                        title={`Delivered via Gmail SMTP: ${booking.emailSentAt ? new Date(booking.emailSentAt).toLocaleString() : ""}`}
+                                      >
+                                        ● Received
+                                      </span>
+                                    )}
+                                    {booking.emailStatus === "simulated" && (
+                                      <span 
+                                        className="bg-sky-50 text-sky-700 text-[9px] font-extrabold px-1.5 py-0.5 border border-sky-200 rounded select-none cursor-help shrink-0" 
+                                        title="Simulated Delivery - SMTP Credentials are empty on Server"
+                                      >
+                                        ● Simulated
+                                      </span>
+                                    )}
+                                    {booking.emailStatus === "failed" && (
+                                      <button
+                                        onClick={() => alert(`EMAIL TRANSMISSION FAILURE REPORT:\n\nError Message: ${booking.emailError || "Unknown connection error"}\n\nTroubleshooting suggestion:\n1. Check your SMTP setup details in System configurations.\n2. Confirm the 16-character Google App Password represents your account security features. Spaces should be ignored.`)}
+                                        className="bg-red-50 hover:bg-red-100 text-red-700 text-[9px] font-extrabold px-1.5 py-0.5 border border-red-200 rounded cursor-pointer shrink-0 transition-all"
+                                        title="Delivery failure detected. Click to troubleshoot SMTP error."
+                                      >
+                                        ● Failed (Click)
+                                      </button>
+                                    )}
+                                  </span>
                                 )}
                                 {booking.paymentMethod === "EcoCash" && (
                                   <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">

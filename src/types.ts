@@ -57,6 +57,9 @@ export interface Booking {
   roomOptionId?: string;   // specific selected room variation
   roomOptionName?: string; // name of selected variation helper
   roomOptionPrice?: number; // stored price for booking reference
+  emailStatus?: "sent" | "failed" | "simulated"; // email dispatch status
+  emailError?: string; // error description if delivery failed
+  emailSentAt?: string; // timestamp of email dispatch
 }
 
 // Pre-populated realistic student accommodations around Midlands State University (MSU) Gweru, Zimbabwe.

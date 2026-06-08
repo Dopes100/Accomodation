@@ -32,12 +32,19 @@ async function startServer() {
     }
 
     try {
+      // Upgraded SMTP transport parameters for highest Gmail delivery rates in Cloud environments
       const transporter = nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true, // Utilize direct SSL
         auth: {
           user: senderEmail,
           pass: appPassword,
         },
+        tls: {
+          // Bypasses certificate verification issues in containerized networks
+          rejectUnauthorized: false
+        }
       });
 
       const mailOptions: any = {

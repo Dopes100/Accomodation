@@ -294,4 +294,22 @@ export async function getSMTPSettingsFromFirestore() {
   }
 }
 
+/**
+ * Updates a booking with custom properties.
+ */
+export async function updateBookingInFirestore(bookingId: string, updates: Partial<Booking>) {
+  const path = `bookings/${bookingId}`;
+  try {
+    const docSnap = await getDoc(doc(db, "bookings", bookingId));
+    if (docSnap.exists()) {
+      const currentData = docSnap.data() as Booking;
+      const updated = { ...currentData, ...updates };
+      await setDoc(doc(db, "bookings", bookingId), sanitizeForFirestore(updated));
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+
 

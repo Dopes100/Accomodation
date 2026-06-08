@@ -5,7 +5,7 @@
 
 import React, { useState } from "react";
 import { House, Booking } from "../types";
-import { getSMTPSettingsFromFirestore } from "../firebaseUtils";
+import { getSMTPSettingsFromFirestore, updateBookingInFirestore } from "../firebaseUtils";
 import { 
   X, 
   MessageSquare, 
@@ -410,6 +410,26 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
           data = { success: false, error: responseText };
         }
         console.log("Email dispatch service response:", data);
+        let statusValue: "sent" | "failed" | "simulated" = "failed";
+        let errorMsg = "";
+        if (data && typeof data === "object") {
+          if (data.success) {
+            statusValue = data.simulated ? "simulated" : "sent";
+          } else {
+            statusValue = "failed";
+            errorMsg = data.warning || data.details || "SMTP rejection";
+          }
+        }
+        try {
+          await updateBookingInFirestore(bookingId, {
+            emailStatus: statusValue,
+            emailSentAt: new Date().toISOString(),
+            emailError: errorMsg || undefined
+          });
+        } catch (logErr) {
+          console.error("Could not write provisional email log because:", logErr);
+        }
+
         if (data && typeof data === "object") {
           setEmailDispatchResult({
             success: !!data.success,
@@ -421,6 +441,15 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
         }
       } catch (error: any) {
         console.error("Failed to make /api/send-email request:", error);
+        try {
+          await updateBookingInFirestore(bookingId, {
+            emailStatus: "failed",
+            emailSentAt: new Date().toISOString(),
+            emailError: error instanceof Error ? error.message : String(error)
+          });
+        } catch (logErr) {
+          console.error("Could not write provisional email catch log because:", logErr);
+        }
         setEmailDispatchResult({
           success: false,
           simulated: false,
