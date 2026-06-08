@@ -34,6 +34,8 @@ export interface House {
   maxSlots: number;
   isAvailable: boolean;
   roomOptions?: RoomOption[]; // Optional room config variations with distinct pricing/ensuite
+  underImprovements?: boolean;
+  bookingLocked?: boolean;
 }
 
 export interface Booking {
@@ -315,5 +317,111 @@ export const INITIAL_HOUSES: House[] = [
     availableSlots: 2,
     maxSlots: 4,
     isAvailable: true
+  },
+  {
+    id: "h12",
+    title: "New Solar-Oasis Executive Residence",
+    description: "Brand new ultra-modern 12-room student residence under final touches (some updates are currently underway). Features a brilliant high-capacity PV-HANGE solar hybrid power backup system and rooftop solar panels. Completely tiled with premium marble-pattern floors, state-of-the-art bathrooms with gorgeous glass showers, spacious tiled sharing kitchen, strong steel safety gate doors, burglar bars, and solid concrete outdoor multi-troughs laundry basins. Features unlimited high speed Wi-Fi and 24/7 solar-pump borehole water.",
+    price: 100,
+    location: "KMP (ZESA Area), Gweru",
+    roomType: "Double Shared",
+    genderLimit: "Mixed",
+    distances: {
+      mainCampus: 0.9,
+      batanai: 1.5,
+      telOne: 5.6
+    },
+    features: [
+      "PV-HANGE Solar-Hybrid Power",
+      "Rooftop Solar PV Panels",
+      "High-Speed Wi-Fi",
+      "Unlimited Solar Borehole",
+      "Glass Shower Units",
+      "Outdoor Multi-Troughs Laundry",
+      "Maximum Security Steel Gate",
+      "Premium Marble Tiling"
+    ],
+    images: [
+      "/images/h12/h12_exterior.png",
+      "/images/h12/h12_solar_system.png",
+      "/images/h12/h12_bedroom.png",
+      "/images/h12/h12_bathroom.png",
+      "/images/h12/h12_laundry_kitchen.png"
+    ],
+    availableSlots: 25,
+    maxSlots: 25,
+    isAvailable: false,
+    bookingLocked: true,
+    roomOptions: [
+      { id: "h12-o1", name: "3-People Sharing Room (1 Room Available)", sharingCount: 3, ensuite: true, price: 100, availableSlots: 3, maxSlots: 3 },
+      { id: "h12-o2", name: "2-People Sharing Room (11 Rooms Available)", sharingCount: 2, ensuite: false, price: 100, availableSlots: 22, maxSlots: 22 }
+    ]
+  },
+  {
+    id: "h13",
+    title: "Psalms Villa",
+    description: "Comfortable and safe student boardings located in the peaceful KMP Zesa area, just a short 0.5km (5-minute walk) to the MSU campus. Features spacious double sharing rooms on a beautiful white-and-grey marble patterned tiled floor. Each room is equipped with a clean study desk and wooden chair. Includes a secure steel partition safety gate, built-in storage shelving units, clean bathroom facilities, unlimited borehole water supply, high-speed Wi-Fi, and a lovely communal student kitchen fully fitted with Capri chest freezers and a wall-mounted flat-screen television.",
+    price: 120,
+    location: "KMP Zesa, Gweru",
+    roomType: "Double Shared",
+    genderLimit: "Mixed",
+    distances: {
+      mainCampus: 0.5,
+      batanai: 1.1,
+      telOne: 4.5
+    },
+    features: [
+      "Water Borehole",
+      "High-Speed Wi-Fi",
+      "Marble Tile Flooring",
+      "Study Desk & Chair",
+      "Security Safety Gate",
+      "Shared Kitchen TV",
+      "Capri Chest Freezers",
+      "Storage Shelves"
+    ],
+    images: [
+      "/images/psalms/psalms_bedroom.png",
+      "/images/psalms/psalms_kitchen.png",
+      "/images/psalms/psalms_bathroom.png",
+      "/images/psalms/psalms_exterior.png"
+    ],
+    availableSlots: 10,
+    maxSlots: 10,
+    isAvailable: true,
+    roomOptions: [
+      { id: "h13-o1", name: "2-People Sharing Room (Standard)", sharingCount: 2, ensuite: false, price: 120, availableSlots: 6, maxSlots: 6 },
+      { id: "h13-o2", name: "2-People Sharing Room (Ensuite)", sharingCount: 2, ensuite: true, price: 140, availableSlots: 4, maxSlots: 4 }
+    ]
+  },
+  {
+    id: "h14",
+    title: "Diagonal Opposite Allana House (New)",
+    description: "Brand new high-quality student boardings located in the neat KMP Zesa area, diagonally opposite Allana House, just a short 0.8km walk to the MSU Main Campus. The property is currently undergoing final paint and minor finishing details (still under improvements) and cannot be secured for booking yet. Highly secured with a strong lockable steel security gate and includes high-quality unlimited borehole water supply. The residence offers spacious double-sharing rooms and includes a separate self-contained cottage option.",
+    price: 120,
+    location: "KMP Zesa, Gweru",
+    roomType: "Double Shared",
+    genderLimit: "Mixed",
+    distances: {
+      mainCampus: 0.8,
+      batanai: 1.4,
+      telOne: 4.5
+    },
+    features: [
+      "High-Quality Borehole",
+      "Gated Property",
+      "Brand New Residence",
+      "Under Improvements",
+      "Self-Contained Cottage"
+    ],
+    images: [],
+    availableSlots: 0,
+    maxSlots: 8,
+    isAvailable: false,
+    underImprovements: true,
+    roomOptions: [
+      { id: "h14-o1", name: "2-People Sharing Room (Main House)", sharingCount: 2, ensuite: false, price: 120, availableSlots: 0, maxSlots: 6 },
+      { id: "h14-o2", name: "Cottage Room (2-People Sharing)", sharingCount: 2, ensuite: true, price: 120, availableSlots: 0, maxSlots: 2 }
+    ]
   }
 ];

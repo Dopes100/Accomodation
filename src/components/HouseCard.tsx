@@ -18,7 +18,8 @@ import {
   Activity, 
   Percent, 
   DoorOpen,
-  DollarSign
+  DollarSign,
+  Wrench
 } from "lucide-react";
 import DistanceGrid from "./DistanceGrid";
 
@@ -69,12 +70,26 @@ export default function HouseCard({ house, onBookNow }: HouseCardProps) {
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-xs hover:shadow-xl hover:border-blue-100 transition-all duration-300">
       {/* Image Gallery Container */}
       <div className="relative h-60 w-full overflow-hidden bg-neutral-900">
-        <img
-          src={house.images[currentImageIdx]}
-          alt={house.title}
-          referrerPolicy="no-referrer"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-        />
+        {house.underImprovements && (!house.images || house.images.length === 0) ? (
+          <div className="w-full h-full bg-linear-to-br from-slate-900 via-slate-800 to-slate-950 flex flex-col items-center justify-center p-6 text-center select-none">
+            <div className="h-12 w-12 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-2.5 animate-pulse">
+              <Wrench size={22} />
+            </div>
+            <span className="text-[11px] font-bold text-blue-400 uppercase tracking-widest leading-none mb-1">
+              Still Under Improvements
+            </span>
+            <p className="text-[10px] text-neutral-400 leading-snug max-w-[210px] px-2">
+              Property is brand new. Gallery media will be updated once completion is finalized.
+            </p>
+          </div>
+        ) : (
+          <img
+            src={house.images[currentImageIdx]}
+            alt={house.title}
+            referrerPolicy="no-referrer"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+        )}
 
         {/* Gradient Overlay */}
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-neutral-950/70 to-transparent" />
@@ -164,16 +179,22 @@ export default function HouseCard({ house, onBookNow }: HouseCardProps) {
             <span className="flex items-center gap-1">
               <DoorOpen size={13} className="text-blue-600" /> Availability Status
             </span>
-            <span className={isFull ? "text-red-500" : "text-blue-700 animate-pulse"}>
-              {isFull ? "Fully Booked" : `${house.availableSlots} of ${house.maxSlots} spaces left!`}
-            </span>
+            {house.underImprovements || house.bookingLocked ? (
+              <span className="text-amber-600 font-extrabold animate-pulse">
+                Booking Suspended
+              </span>
+            ) : (
+              <span className={isFull ? "text-red-500" : "text-blue-700 animate-pulse"}>
+                {isFull ? "Fully Booked" : `${house.availableSlots} of ${house.maxSlots} spaces left!`}
+              </span>
+            )}
           </div>
           <div className="w-full bg-neutral-100 h-2 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                isFull ? "bg-red-400" : slotProgressPercent < 30 ? "bg-amber-400" : "bg-blue-600"
+                house.underImprovements || house.bookingLocked ? "bg-amber-400" : isFull ? "bg-red-400" : slotProgressPercent < 30 ? "bg-amber-400" : "bg-blue-600"
               }`}
-              style={{ width: `${slotProgressPercent}%` }}
+              style={{ width: house.underImprovements || house.bookingLocked ? "100%" : `${slotProgressPercent}%` }}
             />
           </div>
         </div>
@@ -244,20 +265,32 @@ export default function HouseCard({ house, onBookNow }: HouseCardProps) {
 
         {/* Action Button - Secure on Whatsapp */}
         <div className="pt-2">
-          <button
-            disabled={isFull}
-            onClick={() => onBookNow(house)}
-            className={`w-full font-bold text-xs tracking-wider uppercase rounded-xl py-3 px-4 shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              isFull
-                ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
-                : "bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] hover:shadow-lg hover:shadow-blue-600/10"
-            }`}
-          >
-            <span>Secure This House Now</span>
-            <span className="px-1.5 py-0.5 text-[9px] bg-blue-700 text-blue-50 rounded-md font-bold text-center">
-              $20 Agent Fee
-            </span>
-          </button>
+          {house.underImprovements || house.bookingLocked ? (
+            <button
+              disabled
+              className="w-full font-bold text-xs tracking-wider uppercase rounded-xl py-3 px-4 shadow-sm bg-neutral-100 text-neutral-400 cursor-not-allowed flex items-center justify-center gap-1.5 border border-dashed border-neutral-200"
+            >
+              <span>Booking Locked</span>
+              <span className="px-1.5 py-0.5 text-[9px] bg-neutral-200 text-neutral-500 rounded-md font-bold text-center">
+                Disabled
+              </span>
+            </button>
+          ) : (
+            <button
+              disabled={isFull}
+              onClick={() => onBookNow(house)}
+              className={`w-full font-bold text-xs tracking-wider uppercase rounded-xl py-3 px-4 shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                isFull
+                  ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                  : "bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] hover:shadow-lg hover:shadow-blue-600/10"
+              }`}
+            >
+              <span>Secure This House Now</span>
+              <span className="px-1.5 py-0.5 text-[9px] bg-blue-700 text-blue-50 rounded-md font-bold text-center">
+                $20 Agent Fee
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </div>

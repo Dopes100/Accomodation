@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import nodemailer from "nodemailer";
 
@@ -53,10 +54,21 @@ async function startServer() {
         subject,
         html: html || undefined,
         text,
+        attachments: []
       };
 
       if (req.body.attachments && Array.isArray(req.body.attachments)) {
-        mailOptions.attachments = req.body.attachments;
+        mailOptions.attachments = [...req.body.attachments];
+      }
+
+      // Embed the brand logo as an inline attachment for HTML email templates
+      const logoPath = path.join(process.cwd(), "public", "student_accommodation_hero_1779802930883.png");
+      if (fs.existsSync(logoPath)) {
+        mailOptions.attachments.push({
+          filename: "dopes_logo.png",
+          path: logoPath,
+          cid: "logo"
+        });
       }
 
       const info = await transporter.sendMail(mailOptions);

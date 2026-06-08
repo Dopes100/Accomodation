@@ -114,6 +114,26 @@
         }
       },
       "required": ["id", "houseId", "houseTitle", "studentName", "studentPhone", "gender", "headsCount", "targetMoveIn", "notes", "timestamp"]
+    },
+    "SMTPSettings": {
+      "title": "SMTP Settings",
+      "description": "Google Gmail SMTP Credentials for dispatching student notification emails",
+      "type": "object",
+      "properties": {
+        "smtpUser": {
+          "type": "string",
+          "description": "Gmail email address used as the sender"
+        },
+        "smtpPass": {
+          "type": "string",
+          "description": "16-character Google App Password"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of custom configuration persistence"
+        }
+      },
+      "required": ["smtpUser", "smtpPass"]
     }
   },
   "firestore": {
@@ -124,6 +144,10 @@
     "bookings/{bookingId}": {
       "schema": "Booking",
       "description": "Collection of accommodation booking requests"
+    },
+    "settings/{settingId}": {
+      "schema": "SMTPSettings",
+      "description": "SMTP and global application configurations"
     }
   }
 }

@@ -291,6 +291,9 @@ export default function BookingFormModal({ house, isOpen, onClose, onBookingSubm
       <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 30px; text-align: center; color: #ffffff;">
+          <div style="margin-bottom: 15px;">
+            <img src="cid:logo" alt="Dopes Logo" style="height: 75px; width: 75px; object-fit: cover; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: inline-block;" />
+          </div>
           <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">Dopes Accommodation</h1>
           <p style="margin: 5px 0 0 0; font-size: 13px; color: #bfdbfe; font-weight: 500;">Secure Student Housing Near Campus Safely and Easily</p>
         </div>

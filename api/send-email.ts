@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import path from "path";
+import fs from "fs";
 
 export default async function handler(req: any, res: any) {
   // Handle CORS if needed
@@ -52,10 +54,21 @@ export default async function handler(req: any, res: any) {
       subject,
       html: html || undefined,
       text,
+      attachments: []
     };
 
     if (attachments && Array.isArray(attachments)) {
-      mailOptions.attachments = attachments;
+      mailOptions.attachments = [...attachments];
+    }
+
+    // Embed the brand logo as an inline attachment for HTML email templates
+    const logoPath = path.join(process.cwd(), "public", "student_accommodation_hero_1779802930883.png");
+    if (fs.existsSync(logoPath)) {
+      mailOptions.attachments.push({
+        filename: "dopes_logo.png",
+        path: logoPath,
+        cid: "logo"
+      });
     }
 
     const info = await transporter.sendMail(mailOptions);

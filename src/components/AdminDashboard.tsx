@@ -33,7 +33,8 @@ import {
   Loader2,
   Mail,
   MessageSquare,
-  Settings
+  Settings,
+  Activity
 } from "lucide-react";
 
 interface AdminDashboardProps {
@@ -87,7 +88,7 @@ export default function AdminDashboard({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState("");
 
-  const [activeTab, setActiveTab] = useState<"listings" | "bookings" | "analytics" | "deposits">("listings");
+  const [activeTab, setActiveTab] = useState<"listings" | "bookings" | "analytics" | "deposits" | "system">("listings");
   const [sendingPdfId, setSendingPdfId] = useState<string | null>(null);
   const [depositsSearchQuery, setDepositsSearchQuery] = useState("");
   
@@ -428,6 +429,9 @@ export default function AdminDashboard({
       const receiptEmailHtml = `
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
           <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center; color: #ffffff;">
+            <div style="margin-bottom: 15px;">
+              <img src="cid:logo" alt="Dopes Logo" style="height: 75px; width: 75px; object-fit: cover; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: inline-block;" />
+            </div>
             <h1 style="margin: 0; font-size: 24px; font-weight: 800; text-transform: uppercase;">Payment Confirmed</h1>
             <p style="margin: 5px 0 0 0; font-size: 13px; color: #a7f3d0; font-weight: 500;">Your Official DOPES Secure PDF Receipt is Attached!</p>
           </div>
@@ -1061,6 +1065,16 @@ export default function AdminDashboard({
               }`}
             >
               <Coins size={13} className={activeTab === "deposits" ? "text-amber-500" : ""} /> Deposits Ledger
+            </button>
+            <button
+              onClick={() => setActiveTab("system")}
+              className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeTab === "system" ? "bg-white text-blue-950 font-bold shadow-xs" : "hover:text-blue-100 text-blue-200/80"
+              }`}
+            >
+              <span className={`w-4 h-4 rounded-md flex items-center justify-center font-black text-[10px] ${
+                activeTab === "system" ? "bg-blue-600 text-white" : "bg-blue-500 text-white"
+              }`}>D</span> System Status
             </button>
           </div>
 
@@ -2502,6 +2516,225 @@ export default function AdminDashboard({
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        )}
+
+        {/* System Status Tab */}
+        {activeTab === "system" && (
+          <div className="space-y-6 animate-fade-in text-neutral-800">
+            {/* Main Header summary block */}
+            <div className="bg-gradient-to-r from-blue-900 to-blue-950 rounded-2xl p-6 text-white shadow-md border border-blue-805">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Activity size={18} className="text-emerald-400 animate-pulse" />
+                    <h2 className="text-lg font-black tracking-tight text-white">System Status & Email Dispatch Auditing</h2>
+                  </div>
+                  <p className="text-xs text-blue-200 font-normal">
+                    Monitor real-time Google Carrier SMTP integration state and review student notification transaction receipts.
+                  </p>
+                </div>
+                {/* Visual Status Indicator */}
+                <div className="flex items-center gap-3 bg-white/10 px-4 py-2.5 rounded-xl border border-white/10">
+                  <span className="relative flex h-3 w-3">
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${smtpPass ? "bg-emerald-400" : "bg-amber-400"}`}></span>
+                    <span className={`relative inline-flex rounded-full h-3 w-3 ${smtpPass ? "bg-emerald-500" : "bg-amber-500"}`}></span>
+                  </span>
+                  <div className="flex flex-col text-left">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-200">Carrier Status</span>
+                    <span className="text-xs font-bold leading-tight text-white">
+                      {smtpPass ? "SMTP Live Carrier Mode" : "Simulated Local Sandbox"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Sub-bento Grid split */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Left Column: Email Configuration State */}
+              <div className="lg:col-span-1 bg-white border rounded-2xl p-5 space-y-4 shadow-xs">
+                <div className="flex items-center gap-2 border-b pb-3">
+                  <div className="bg-blue-50 text-blue-800 p-1.5 rounded-lg">
+                    <Mail size={15} />
+                  </div>
+                  <h3 className="font-extrabold text-sm text-neutral-900">Nodemailer Dispatch Configuration</h3>
+                </div>
+
+                <div className="space-y-3.5 text-xs">
+                  <div className="flex justify-between items-center bg-neutral-50 p-2.5 rounded-lg border">
+                    <span className="text-neutral-500 font-semibold">Service Carrier</span>
+                    <span className="font-bold text-neutral-800 font-mono">Google Gmail SMTP</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-neutral-50 p-2.5 rounded-lg border">
+                    <span className="text-neutral-500 font-semibold">Port Connection</span>
+                    <span className="font-bold text-neutral-800 font-mono">465 (Direct SSL)</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-neutral-50 p-2.5 rounded-lg border">
+                    <span className="text-neutral-500 font-semibold">Outgoing Secure Host</span>
+                    <span className="font-bold text-neutral-800 font-mono">smtp.gmail.com</span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-neutral-500 font-semibold block text-[10px] uppercase">Registered Sender User</span>
+                    <div className="font-extrabold text-neutral-800 font-mono p-2 bg-neutral-50 rounded-lg border select-all select-none truncate" title={smtpUser}>
+                      {smtpUser}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-neutral-500 font-semibold block text-[10px] uppercase">Google App Password (16-char)</span>
+                    <div className="font-bold text-neutral-800 font-mono p-2 bg-neutral-50 rounded-lg border select-none">
+                      {smtpPass ? `•••• •••• •••• ••••` : <span className="text-amber-600 font-bold">Unconfigured (Mock Mode)</span>}
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => setShowSmtpSettings(true)}
+                      className="w-full bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                    >
+                      <Settings size={13} />
+                      Customize SMTP Credentials
+                    </button>
+                    <p className="text-[10px] text-neutral-400 mt-2 leading-relaxed text-center font-normal">
+                      Credentials persist inside secure local storage and sync with Firestore for automated dispatching.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: List the last 5 sent booking notifications for audit purposes */}
+              <div className="lg:col-span-2 bg-white border rounded-2xl p-5 space-y-4 shadow-xs flex flex-col">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-emerald-50 text-emerald-800 p-1.5 rounded-lg">
+                      <Clock size={15} />
+                    </div>
+                    <h3 className="font-extrabold text-sm text-neutral-900">Email Audit Trail (Last 5 Dispositions)</h3>
+                  </div>
+                  <span className="text-[10px] bg-neutral-100 text-neutral-600 px-2.5 py-0.5 rounded-full font-bold">
+                    Real-time Audit
+                  </span>
+                </div>
+
+                {(() => {
+                  const auditBookings = [...bookings]
+                    .filter(b => b.studentEmail)
+                    .sort((a, b) => {
+                      const timeA = a.emailSentAt || a.timestamp || "";
+                      const timeB = b.emailSentAt || b.timestamp || "";
+                      return timeB.localeCompare(timeA);
+                    })
+                    .slice(0, 5);
+
+                  if (auditBookings.length === 0) {
+                    return (
+                      <div className="flex-grow flex flex-col items-center justify-center text-center p-6 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
+                        <Mail className="text-neutral-300 mb-2" size={32} />
+                        <h4 className="font-bold text-xs text-neutral-600">No Dispatched Notifications Found</h4>
+                        <p className="text-[10.5px] text-neutral-400 max-w-xs mt-1 font-normal">
+                          When student bookings are received or deposit verifications are executed, the logs will appear here for audit trail tracking.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex-grow overflow-x-auto">
+                      <table className="w-full border-collapse font-medium text-[11px] text-left text-neutral-600">
+                        <thead>
+                          <tr className="border-b text-[10px] font-extrabold text-neutral-400 uppercase tracking-wider">
+                            <th className="pb-2.5 font-extrabold pb-2">Student & Booking</th>
+                            <th className="pb-2.5 font-extrabold text-center pb-2">Status</th>
+                            <th className="pb-2.5 font-extrabold pb-2">Dispatched At</th>
+                            <th className="pb-2.5 font-extrabold text-right pb-2">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {auditBookings.map((b) => (
+                            <tr key={b.id} className="hover:bg-neutral-50/50 transition-colors">
+                              <td className="py-3 pr-2 whitespace-nowrap">
+                                <div className="font-extrabold text-neutral-800">{b.studentName}</div>
+                                <div className="text-neutral-500 text-[10.5px] font-semibold">{b.studentEmail}</div>
+                                <div className="text-blue-900 font-bold text-[9.5px] mt-0.5 max-w-[180px] truncate" title={b.houseTitle}>
+                                  🏢 {b.houseTitle}
+                                </div>
+                              </td>
+                              <td className="py-3 text-center whitespace-nowrap">
+                                {b.emailStatus === "sent" && (
+                                  <span className="inline-block bg-emerald-50 text-emerald-700 text-[9px] font-black px-2 py-0.5 border border-emerald-200 rounded select-none">
+                                    ● Live Sent
+                                  </span>
+                                )}
+                                {b.emailStatus === "simulated" && (
+                                  <span className="inline-block bg-sky-50 text-sky-700 text-[9px] font-black px-2 py-0.5 border border-sky-200 rounded select-none">
+                                    ● Simulated
+                                  </span>
+                                )}
+                                {b.emailStatus === "failed" && (
+                                  <span 
+                                    className="inline-block bg-red-50 hover:bg-red-100 text-red-700 text-[9px] font-black px-2 py-0.5 border border-red-200 rounded select-none cursor-pointer"
+                                    onClick={() => alert(`TRANSMISSION ERROR LOG:\n\nMessage: ${b.emailError || "SMTP Connection Rejected"}\n\nTroubleshooting:\n- Make sure Google App Password space characters are not included.\n- Switch on Live SMTP in manual configuration.`)}
+                                    title="Click to view delivery error"
+                                  >
+                                    ⚠️ Failed (Click)
+                                  </span>
+                                )}
+                                {!b.emailStatus && (
+                                  <span className="inline-block bg-neutral-50 text-neutral-500 text-[9px] font-black px-2 py-0.5 border border-neutral-200 rounded select-none">
+                                    ● Pending Match
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 text-neutral-500 whitespace-nowrap">
+                                {b.emailSentAt ? (
+                                  <>
+                                    <div className="font-bold text-neutral-700">
+                                      {new Date(b.emailSentAt).toLocaleDateString()}
+                                    </div>
+                                    <div className="text-[10px] text-neutral-400 font-normal">
+                                      {new Date(b.emailSentAt).toLocaleTimeString()}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <span className="text-neutral-400 font-normal">Pre-audit log legacy</span>
+                                )}
+                              </td>
+                              <td className="py-3 text-right whitespace-nowrap">
+                                <div className="inline-flex gap-1.5">
+                                  {b.completed ? (
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          alert(`Initiating fresh recipient receipt push notification to: ${b.studentEmail}`);
+                                          await generateAndSendPDFReceipt(b);
+                                        } catch (sendErr: any) {
+                                          alert(`Resend failed: ${sendErr.message}`);
+                                        }
+                                      }}
+                                      className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-850 hover:text-emerald-900 font-black px-2.5 py-1 rounded transition text-[10px] cursor-pointer shadow-3xs"
+                                      title="Resend Secure PDF Payment Receipt To Client Gmail"
+                                    >
+                                      Resend Receipt
+                                    </button>
+                                  ) : (
+                                    <span className="text-neutral-400 font-bold bg-neutral-50 px-2 py-1 border rounded text-[10px] select-none" title="Verify deposit in Deposits Ledger tab to trigger Receipt generation">
+                                      Verify Deposit
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+
+              </div>
+
             </div>
           </div>
         )}

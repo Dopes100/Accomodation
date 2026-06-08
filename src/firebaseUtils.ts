@@ -71,6 +71,101 @@ export async function initializeDatabaseIfEmpty() {
       });
       await batch.commit();
       console.log("MSU listings initialized successfully.");
+    } else {
+      // Robust synchronization of the brand-new h12 house listing
+      const h12Ref = doc(db, path, "h12");
+      const h12Snap = await getDoc(h12Ref);
+      if (!h12Snap.exists()) {
+        console.log("Synchronizing h12 listing to Firestore...");
+        const targetHouse = INITIAL_HOUSES.find((h) => h.id === "h12");
+        if (targetHouse) {
+          await setDoc(h12Ref, targetHouse);
+          console.log("Synchronized h12 successfully.");
+        }
+      } else {
+        // Overwrite or update to sync locally-enhanced image paths and KMP ZESA location
+        const existingData = h12Snap.data();
+        const targetHouse = INITIAL_HOUSES.find((h) => h.id === "h12");
+        if (targetHouse) {
+          const hasOldImages = existingData?.images?.some((img: string) => img.includes("unsplash.com"));
+          const hasOldLocation = existingData?.location?.includes("Nehosho");
+          
+          // Deep check if images list size or values differ, or location differs
+          const imagesMismatch = !existingData?.images || 
+            existingData.images.length !== targetHouse.images.length ||
+            existingData.images.some((val: string, idx: number) => val !== targetHouse.images[idx]);
+          
+          const locationMismatch = existingData?.location !== targetHouse.location;
+          const titleMismatch = existingData?.title !== targetHouse.title;
+          const descMismatch = existingData?.description !== targetHouse.description;
+          const bookingLockedMismatch = existingData?.bookingLocked !== targetHouse.bookingLocked;
+          const isAvailableMismatch = existingData?.isAvailable !== targetHouse.isAvailable;
+
+          if (hasOldImages || hasOldLocation || imagesMismatch || locationMismatch || titleMismatch || descMismatch || bookingLockedMismatch || isAvailableMismatch) {
+            console.log("Synchronizing updated h12 listing (new KMP ZESA location, locally-enhanced photos, description, and locked booking status) to Firestore...");
+            await setDoc(h12Ref, targetHouse, { merge: true });
+            console.log("Synchronized h12 updates successfully.");
+          }
+        }
+      }
+
+      // Robust synchronization of the brand-new h13 house listing (Psalms Villa)
+      const h13Ref = doc(db, path, "h13");
+      const h13Snap = await getDoc(h13Ref);
+      if (!h13Snap.exists()) {
+        console.log("Synchronizing h13 listing (Psalms Villa) to Firestore...");
+        const targetHouse = INITIAL_HOUSES.find((h) => h.id === "h13");
+        if (targetHouse) {
+          await setDoc(h13Ref, targetHouse);
+          console.log("Synchronized h13 successfully.");
+        }
+      } else {
+        const existingData = h13Snap.data();
+        const targetHouse = INITIAL_HOUSES.find((h) => h.id === "h13");
+        if (targetHouse) {
+          // Deep check if images list size or values differ, or location or options differ
+          const imagesMismatch = !existingData?.images || 
+            existingData.images.length !== targetHouse.images.length ||
+            existingData.images.some((val: string, idx: number) => val !== targetHouse.images[idx]);
+          
+          const locationMismatch = existingData?.location !== targetHouse.location;
+          const titleMismatch = existingData?.title !== targetHouse.title;
+          const descMismatch = existingData?.description !== targetHouse.description;
+
+          if (imagesMismatch || locationMismatch || titleMismatch || descMismatch) {
+            console.log("Synchronizing updated h13 listing (Psalms Villa) to Firestore...");
+            await setDoc(h13Ref, targetHouse, { merge: true });
+            console.log("Synchronized h13 updates successfully.");
+          }
+        }
+      }
+
+      // Robust synchronization of the brand-new h14 house listing (Diagonal Opposite Allana House)
+      const h14Ref = doc(db, path, "h14");
+      const h14Snap = await getDoc(h14Ref);
+      if (!h14Snap.exists()) {
+        console.log("Synchronizing h14 listing (Diagonal Opposite Allana) to Firestore...");
+        const targetHouse = INITIAL_HOUSES.find((h) => h.id === "h14");
+        if (targetHouse) {
+          await setDoc(h14Ref, targetHouse);
+          console.log("Synchronized h14 successfully.");
+        }
+      } else {
+        const existingData = h14Snap.data();
+        const targetHouse = INITIAL_HOUSES.find((h) => h.id === "h14");
+        if (targetHouse) {
+          const titleMismatch = existingData?.title !== targetHouse.title;
+          const descMismatch = existingData?.description !== targetHouse.description;
+          const locationMismatch = existingData?.location !== targetHouse.location;
+          const improvementsMismatch = existingData?.underImprovements !== targetHouse.underImprovements;
+
+          if (titleMismatch || descMismatch || locationMismatch || improvementsMismatch) {
+            console.log("Synchronizing updated h14 listing (Diagonal Opposite Allana) to Firestore...");
+            await setDoc(h14Ref, targetHouse, { merge: true });
+            console.log("Synchronized h14 updates successfully.");
+          }
+        }
+      }
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
