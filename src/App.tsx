@@ -266,24 +266,27 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col antialiased">
       {/* Dynamic Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-blue-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 sm:h-20">
             {/* Logo / Title */}
-            <div className="flex items-center gap-2.5">
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-lg shadow-blue-500/10 border border-blue-500">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+              <div className="h-9 w-9 sm:h-12 sm:w-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-lg sm:text-xl shadow-lg shadow-blue-500/10 border border-blue-500 shrink-0 select-none">
                 D
               </div>
-              <div className="leading-tight">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm sm:text-lg font-black tracking-tight text-blue-900">DOPES ACCOMMODATION</span>
-                  <span className="hidden sm:inline-block text-[10px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Off Campus (Rez)</span>
+              <div className="leading-tight min-w-0">
+                <div className="flex items-center gap-1 sm:gap-1.5">
+                  <span className="text-xs min-[360px]:text-sm sm:text-lg font-black tracking-tight text-blue-900 truncate uppercase">DOPES ACCOMMODATION</span>
+                  <span className="hidden sm:inline-block text-[10px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 shrink-0">Off Campus</span>
                 </div>
-                <p className="text-[10px] sm:text-xs text-neutral-400 font-medium tracking-wide">Midlands State University Student Housing Hub - Off Campus (Rez)</p>
+                <p className="text-[10px] sm:text-xs text-neutral-400 font-medium tracking-wide truncate">
+                  <span className="sm:hidden text-neutral-400">MSU Off Campus Housing</span>
+                  <span className="hidden sm:inline">Midlands State University Student Housing Hub - Off Campus</span>
+                </p>
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <button
                 onClick={handleShareWebsite}
                 className={`hidden sm:flex border rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all items-center gap-1.5 shadow-xs cursor-pointer ${
@@ -301,18 +304,19 @@ export default function App() {
                 href="https://api.whatsapp.com/send?phone=263780736072&text=Hello%20DOPES%20MSU%20Accommodation!%20I'm%20looking%20for%20available%20student%20homes." 
                 target="_blank" 
                 rel="noreferrer"
-                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 hover:shadow-sm"
+                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all flex items-center gap-1 hover:shadow-sm shrink-0"
               >
-                <MessageSquare size={15} />
+                <MessageSquare size={14} className="sm:w-3.5 sm:h-3.5" />
                 <span className="hidden md:inline">WhatsApp Agent</span>
               </a>
 
               <button
                 onClick={() => setIsAdminOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-3.5 sm:px-4.5 py-2.5 text-xs sm:text-sm font-bold tracking-wide shadow-xs border border-blue-700 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-2.5 sm:px-4.5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold sm:font-bold tracking-wide shadow-xs border border-blue-700 transition-all flex items-center gap-1 cursor-pointer shrink-0"
               >
-                <Lock size={14} />
-                <span>Admin Login</span>
+                <Lock size={13} className="sm:w-3.5 sm:h-3.5" />
+                <span className="hidden sm:inline">Admin Login</span>
+                <span className="sm:hidden">Admin</span>
               </button>
             </div>
           </div>
@@ -338,7 +342,7 @@ export default function App() {
           </span>
           
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-            Premium Midlands State University <span className="text-slate-300">Off Campus (Rez) Student Homes</span>
+            Premium Midlands State University <span className="text-slate-300">Off Campus Student Homes</span>
           </h1>
           
           <p className="max-w-xl mx-auto text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
@@ -555,7 +559,7 @@ export default function App() {
                 <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-extrabold text-sm">
                   D
                 </div>
-                <span className="font-black text-lg text-white tracking-tight">DOPES OFF-CAMPUS (REZ) HOUSING</span>
+                <span className="font-black text-lg text-white tracking-tight">DOPES OFF-CAMPUS HOUSING</span>
               </div>
               <p className="text-xs text-blue-200/80 leading-relaxed max-w-sm">
                 Providing transparent campus proximity calculations, direct WhatsApp booking, beautifully managed layouts, and secure vetted parameters for student living.
@@ -590,7 +594,7 @@ export default function App() {
                 </p>
                 <div className="pt-2">
                   <span className="bg-white/10 select-none text-[10px] uppercase font-bold text-blue-100 px-2 py-1 rounded">
-                    SECURED OFF-CAMPUS REZ HOUSING
+                    SECURED OFF-CAMPUS HOUSING
                   </span>
                 </div>
               </div>
