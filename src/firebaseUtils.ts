@@ -61,31 +61,38 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 export async function initializeDatabaseIfEmpty() {
   const path = "houses";
   try {
-    // Proactively delete 'h12' (New Solar-Oasis Executive Residence) as requested by the user
+    // Proactively clean up and purge all default seed listings (h1 to h14) from the DB
+    const defaultIds = ["h1", "h2", "h3", "h4", "h5", "h6", "h7", "h8", "h9", "h10", "h11", "h12", "h13", "h14"];
     try {
-      const h12Ref = doc(db, path, "h12");
-      const h12Snap = await getDoc(h12Ref);
-      if (h12Snap.exists()) {
-        console.log("Removing user-requested 'New Solar-Oasis Executive Residence' (h12) listing...");
-        await deleteDoc(h12Ref);
+      const batch = writeBatch(db);
+      let needsCommit = false;
+      for (const id of defaultIds) {
+        const docRef = doc(db, path, id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          console.log(`Purging default seed property listing '${id}' from Firestore database...`);
+          batch.delete(docRef);
+          needsCommit = true;
+        }
+      }
+      if (needsCommit) {
+        await batch.commit();
+        console.log("All default seed property listings cleanly purged from database.");
       }
     } catch (err) {
-      console.error("Failed to delete h12 listing during startup process: ", err);
+      console.error("Failed executing default listings purge routine: ", err);
     }
 
     const querySnapshot = await getDocs(collection(db, path));
-    if (querySnapshot.empty) {
-      console.log("Firestore houses collection is empty. Seed initializing with realistic MSU listings...");
+    if (querySnapshot.empty && INITIAL_HOUSES.length > 0) {
+      console.log("Firestore houses collection is empty. Seed initializing...");
       const batch = writeBatch(db);
       INITIAL_HOUSES.forEach((house) => {
-        // Skip h12 since the user explicitly deleted it
-        if (house.id !== "h12") {
-          const docRef = doc(db, path, house.id);
-          batch.set(docRef, house);
-        }
+        const docRef = doc(db, path, house.id);
+        batch.set(docRef, house);
       });
       await batch.commit();
-      console.log("MSU listings initialized successfully.");
+      console.log("Listings initialized successfully.");
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
