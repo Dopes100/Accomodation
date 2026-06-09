@@ -61,18 +61,20 @@ export default function App() {
     let unsubscribeBookings: (() => void) | undefined;
 
     async function init() {
-      // 1. Initialize DB with fallback data if empty
-      await initializeDatabaseIfEmpty();
-
-      // 2. Listen in real-time to houses
+      // 1. Listen in real-time to houses immediately (non-blocking)
       unsubscribeHouses = subscribeToHouses((updatedHouses) => {
         setHouses(updatedHouses);
         setLoading(false);
       });
 
-      // 3. Listen in real-time to bookings
+      // 2. Listen in real-time to bookings immediately (non-blocking)
       unsubscribeBookings = subscribeToBookings((updatedBookings) => {
         setBookings(updatedBookings);
+      });
+
+      // 3. Initialize/validate DB in the background
+      initializeDatabaseIfEmpty().catch((err) => {
+        console.error("Database initialization check failed:", err);
       });
     }
 
