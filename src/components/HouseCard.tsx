@@ -19,18 +19,50 @@ import {
   Percent, 
   DoorOpen,
   DollarSign,
-  Wrench
+  Wrench,
+  Share2,
+  Check
 } from "lucide-react";
 import DistanceGrid from "./DistanceGrid";
 
 interface HouseCardProps {
   house: House;
   onBookNow: (house: House) => void;
+  isHighlighted?: boolean;
 }
 
-export default function HouseCard({ house, onBookNow }: HouseCardProps) {
+export default function HouseCard({ house, onBookNow, isHighlighted = false }: HouseCardProps) {
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
   const [showDistances, setShowDistances] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}${window.location.pathname}?house=${encodeURIComponent(house.id)}`;
+    
+    // Attempt Web Share API (native WhatsApp/Twitter/Facebook sharing trigger)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: house.title,
+          text: `Check out this student accommodation near MSU: ${house.title} in ${house.location}! 🏠✨`,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        console.log("Web share declined or failed, falling back to clipboard copy: ", err);
+      }
+    }
+
+    // Clipboard Copy Fallback with Toast/Label Feedback
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2500);
+    } catch (err) {
+      console.error("Clipboard write failed: ", err);
+    }
+  };
 
   const prevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -67,7 +99,19 @@ export default function HouseCard({ house, onBookNow }: HouseCardProps) {
   const slotProgressPercent = Math.min(100, (house.availableSlots / house.maxSlots) * 100);
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-xs hover:shadow-xl hover:border-blue-100 transition-all duration-300">
+    <div 
+      id={`house-card-${house.id}`}
+      className={`group flex flex-col overflow-hidden rounded-2xl border transition-all duration-500 relative ${
+        isHighlighted 
+          ? "border-blue-500 ring-4 ring-blue-500/10 shadow-xl shadow-blue-500/5 bg-white scale-[1.01]" 
+          : "border-neutral-100 bg-white shadow-xs hover:shadow-xl hover:border-blue-100"
+      }`}
+    >
+      {isHighlighted && (
+        <div className="absolute top-0 inset-x-0 bg-blue-600 text-white text-[9px] font-extrabold text-center py-1 z-35 tracking-widest uppercase rounded-t-2xl shadow-sm">
+          ★ Shared with you ★
+        </div>
+      )}
       {/* Image Gallery Container */}
       <div className="relative h-60 w-full overflow-hidden bg-neutral-900">
         {house.underImprovements && (!house.images || house.images.length === 0) ? (
@@ -263,34 +307,54 @@ export default function HouseCard({ house, onBookNow }: HouseCardProps) {
           </div>
         )}
 
-        {/* Action Button - Secure on Whatsapp */}
-        <div className="pt-2">
-          {house.underImprovements || house.bookingLocked ? (
-            <button
-              disabled
-              className="w-full font-bold text-xs tracking-wider uppercase rounded-xl py-3 px-4 shadow-sm bg-neutral-100 text-neutral-400 cursor-not-allowed flex items-center justify-center gap-1.5 border border-dashed border-neutral-200"
-            >
-              <span>Booking Locked</span>
-              <span className="px-1.5 py-0.5 text-[9px] bg-neutral-200 text-neutral-500 rounded-md font-bold text-center">
-                Disabled
-              </span>
-            </button>
-          ) : (
-            <button
-              disabled={isFull}
-              onClick={() => onBookNow(house)}
-              className={`w-full font-bold text-xs tracking-wider uppercase rounded-xl py-3 px-4 shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                isFull
-                  ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] hover:shadow-lg hover:shadow-blue-600/10"
-              }`}
-            >
-              <span>Secure This House Now</span>
-              <span className="px-1.5 py-0.5 text-[9px] bg-blue-700 text-blue-50 rounded-md font-bold text-center">
-                $20 Agent Fee
-              </span>
-            </button>
+        {/* Action Button - Secure on Whatsapp & High-fidelity Sharing */}
+        <div className="pt-2 space-y-2">
+          {shareCopied && (
+            <div className="text-center py-1.5 px-2 bg-blue-50 border border-blue-100 text-blue-800 text-[11px] font-semibold rounded-lg animate-fadeIn flex items-center justify-center gap-1.5">
+              <Check size={12} className="text-blue-600" />
+              <span>Link copied! Perfect to share on WhatsApp</span>
+            </div>
           )}
+          
+          <div className="flex gap-2.5">
+            <div className="flex-1">
+              {house.underImprovements || house.bookingLocked ? (
+                <button
+                  disabled
+                  className="w-full h-11 font-bold text-[11px] tracking-wider uppercase rounded-xl shadow-sm bg-neutral-100 text-neutral-400 cursor-not-allowed flex items-center justify-center gap-1 border border-dashed border-neutral-200"
+                >
+                  <span>Booking Locked</span>
+                </button>
+              ) : (
+                <button
+                  disabled={isFull}
+                  onClick={() => onBookNow(house)}
+                  className={`w-full h-11 font-bold text-[11px] tracking-wider uppercase rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    isFull
+                      ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                      : "bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] hover:shadow-lg hover:shadow-blue-600/10"
+                  }`}
+                >
+                  <span>Secure House</span>
+                  <span className="hidden xs:inline-block px-1.5 py-0.5 text-[8.5px] bg-blue-700 text-blue-50 rounded font-black">
+                    $20
+                  </span>
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={handleShare}
+              className={`h-11 px-3.5 rounded-xl border flex items-center justify-center transition-all duration-300 shadow-xs relative cursor-pointer active:scale-95 ${
+                shareCopied
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                  : "bg-white border-neutral-200 text-neutral-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50/40"
+              }`}
+              title="Share listing on WhatsApp/Social"
+            >
+              {shareCopied ? <Check size={16} className="animate-scaleIn" /> : <Share2 size={16} />}
+            </button>
+          </div>
         </div>
       </div>
     </div>

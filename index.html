@@ -40,6 +40,41 @@
     <meta name="twitter:title" content="DOPES MSU Student Accommodation Agency" />
     <meta name="twitter:description" content="Secure your Midlands State University student room with flexible deposit options!" />
     <meta name="twitter:image" content="https://www.dopesaccommodation.agency/student_accommodation_hero_1779802930883.png" />
+
+    <!-- Smart dynamic origin updater to enhance link sharing previews across platforms -->
+    <script>
+      (function() {
+        try {
+          const currentOrigin = window.location.origin;
+          
+          // Helper to substitute placeholder domains if we are running in development or shared environments
+          if (window.location.hostname && !window.location.hostname.includes('dopesaccommodation.agency')) {
+            // Update Canonical Link
+            const canonicalLink = document.querySelector('link[rel="canonical"]');
+            if (canonicalLink) {
+              canonicalLink.setAttribute('href', currentOrigin + '/');
+            }
+            
+            // Update Open Graph tags
+            const ogUrl = document.querySelector('meta[property="og:url"]');
+            if (ogUrl) {
+              ogUrl.setAttribute('content', currentOrigin + '/');
+            }
+            
+            // Update Open Graph and Twitter Card images
+            document.querySelectorAll('meta[property^="og:image"], meta[name="twitter:image"], meta[itemprop="image"], link[rel="image_src"]').forEach(el => {
+              const attrName = el.hasAttribute('content') ? 'content' : 'href';
+              let val = el.getAttribute(attrName);
+              if (val && val.includes('dopesaccommodation.agency')) {
+                el.setAttribute(attrName, val.replace('https://www.dopesaccommodation.agency', currentOrigin));
+              }
+            });
+          }
+        } catch (e) {
+          console.warn("Failed resolving dynamic sharing tags: ", e);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

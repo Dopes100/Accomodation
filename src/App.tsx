@@ -35,7 +35,9 @@ import {
   Users, 
   ArrowUpDown,
   Lock,
-  MessageSquare
+  MessageSquare,
+  Share2,
+  Check
 } from "lucide-react";
 
 export default function App() {
@@ -76,6 +78,69 @@ export default function App() {
   
   // Booking modal
   const [selectedHouseForBooking, setSelectedHouseForBooking] = useState<House | null>(null);
+
+  // Sharing states
+  const [highlightedHouseId, setHighlightedHouseId] = useState<string | null>(null);
+  const [websiteShareCopied, setWebsiteShareCopied] = useState(false);
+
+  // Deep-linking: Extract and handle sharing query params on mount
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const houseParam = params.get("house");
+      if (houseParam) {
+        setHighlightedHouseId(houseParam);
+        // Clear active filters so the loaded cards won't filter this house out
+        setSearchQuery("");
+        setSelectedLocation("All");
+        setSelectedRoomClass("All");
+      }
+    } catch (e) {
+      console.warn("Failed reading URLSearchParams for deep-linking:", e);
+    }
+  }, []);
+
+  // Soft-anchor: Scroll to target shared listing once loaded
+  useEffect(() => {
+    if (highlightedHouseId && houses.length > 0 && !loading) {
+      const runScroll = () => {
+        const el = document.getElementById(`house-card-${highlightedHouseId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      };
+      
+      const timer = setTimeout(runScroll, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedHouseId, houses, loading]);
+
+  const handleShareWebsite = async () => {
+    const shareUrl = window.location.origin + window.location.pathname;
+    
+    // Attempt Web Share API for native integrations (like mobile OS, WhatsApp direct)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "DOPES MSU Student Accommodation Agency",
+          text: "Secure high-quality student off-campus boarding & housing near Midlands State University (MSU) near Main Campus, Batanai Campus, and TelOne with professional dynamic booking and support! 🏠✨",
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        console.log("Web share failed or declined, falling back to clipboard copy: ", err);
+      }
+    }
+
+    // Manual copy fallback
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setWebsiteShareCopied(true);
+      setTimeout(() => setWebsiteShareCopied(false), 2500);
+    } catch (err) {
+      console.error("Clipboard copy failed: ", err);
+    }
+  };
 
   // Initialize and subscribe in useEffect
   useEffect(() => {
@@ -219,6 +284,19 @@ export default function App() {
 
             {/* Quick Actions */}
             <div className="flex items-center gap-3">
+              <button
+                onClick={handleShareWebsite}
+                className={`border rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer ${
+                  websiteShareCopied 
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100" 
+                    : "bg-neutral-50 hover:bg-neutral-100 text-neutral-800 border-neutral-200"
+                }`}
+                title="Share this student accommodation platform"
+              >
+                {websiteShareCopied ? <Check size={15} /> : <Share2 size={15} />}
+                <span>{websiteShareCopied ? "Link Copied" : "Share"}</span>
+              </button>
+
               <a 
                 href="https://api.whatsapp.com/send?phone=263780736072&text=Hello%20DOPES%20MSU%20Accommodation!%20I'm%20looking%20for%20available%20student%20homes." 
                 target="_blank" 
@@ -434,6 +512,7 @@ export default function App() {
                   key={house.id}
                   house={house}
                   onBookNow={(selected) => setSelectedHouseForBooking(selected)}
+                  isHighlighted={house.id === highlightedHouseId}
                 />
               ))}
             </div>
