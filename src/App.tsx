@@ -286,7 +286,7 @@ export default function App() {
             <div className="flex items-center gap-3">
               <button
                 onClick={handleShareWebsite}
-                className={`border rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer ${
+                className={`hidden sm:flex border rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all items-center gap-1.5 shadow-xs cursor-pointer ${
                   websiteShareCopied 
                     ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100" 
                     : "bg-neutral-50 hover:bg-neutral-100 text-neutral-800 border-neutral-200"
