@@ -39,9 +39,31 @@ import {
 } from "lucide-react";
 
 export default function App() {
-  const [houses, setHouses] = useState<House[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [houses, setHouses] = useState<House[]>(() => {
+    try {
+      const cached = localStorage.getItem("msu_student_houses_cache");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [bookings, setBookings] = useState<Booking[]>(() => {
+    try {
+      const cached = localStorage.getItem("msu_student_bookings_cache");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem("msu_student_houses_cache");
+      // If we have cached listings, we can bypass the loading spinner immediately
+      return cached ? false : true;
+    } catch {
+      return true;
+    }
+  });
   
   // Filtering and Sorting States
   const [searchQuery, setSearchQuery] = useState("");
@@ -65,11 +87,21 @@ export default function App() {
       unsubscribeHouses = subscribeToHouses((updatedHouses) => {
         setHouses(updatedHouses);
         setLoading(false);
+        try {
+          localStorage.setItem("msu_student_houses_cache", JSON.stringify(updatedHouses));
+        } catch (err) {
+          console.warn("Storage caching not supported or disabled in iframe:", err);
+        }
       });
 
       // 2. Listen in real-time to bookings immediately (non-blocking)
       unsubscribeBookings = subscribeToBookings((updatedBookings) => {
         setBookings(updatedBookings);
+        try {
+          localStorage.setItem("msu_student_bookings_cache", JSON.stringify(updatedBookings));
+        } catch (err) {
+          console.warn("Storage caching not supported or disabled in iframe:", err);
+        }
       });
 
       // 3. Initialize/validate DB in the background
